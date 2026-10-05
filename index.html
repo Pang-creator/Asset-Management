@@ -1,0 +1,1406 @@
+<!doctype html>
+<html lang="th">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#edf3ee">
+  <title>Asset | Inventory Overview</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --ink: #18352f;
+      --muted: #647872;
+      --line: #dce6e0;
+      --paper: #f3f7f4;
+      --white: #fff;
+      --green: #147865;
+      --green-pale: #e4f2ec;
+      --blue: #377ba0;
+      --blue-pale: #e6f0f5;
+      --amber: #bd7a34;
+      --amber-pale: #fbf0df;
+      --red: #b45443;
+      --red-pale: #f8eae6;
+      --radius: 7px;
+      font-family: "Leelawadee UI", "Tahoma", sans-serif;
+      background: var(--paper);
+      color: var(--ink);
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; min-width: 320px; min-height: 100vh; }
+    button, input, select { font: inherit; }
+    button { color: inherit; }
+    .app { min-height: 100vh; display: grid; grid-template-columns: 226px minmax(0, 1fr); }
+    .rail { display: flex; flex-direction: column; gap: 28px; padding: 24px 16px; background: #173a35; color: #eaf3ed; }
+    .brand { display: flex; align-items: center; gap: 11px; padding: 2px 6px; }
+    .brand-mark { width: 35px; height: 35px; display: grid; place-items: center; border-radius: 9px; color: #173a35; background: #a8d8bd; font-size: 17px; font-weight: 800; }
+    .brand-name { font-weight: 700; font-size: 17px; letter-spacing: 0; }
+    .brand-caption { margin-top: 1px; color: #a8beb4; font-size: 11px; }
+    .nav-label { padding: 0 10px; margin-bottom: 8px; color: #9bb3a8; font-size: 10px; font-weight: 700; }
+    .nav { display: grid; gap: 5px; }
+    .nav-button { display: flex; align-items: center; gap: 11px; width: 100%; min-height: 42px; padding: 0 11px; border: 0; border-radius: 5px; background: transparent; color: #c2d2ca; text-align: left; cursor: pointer; transition: background .16s ease, color .16s ease; }
+    .nav-button:hover { background: #254941; color: white; }
+    .nav-button[aria-current="page"] { background: #d8eee1; color: #173a35; font-weight: 700; }
+    .nav-icon { width: 19px; height: 19px; display: inline-grid; place-items: center; font-size: 16px; }
+    .rail-bottom { margin-top: auto; padding: 14px 10px 0; border-top: 1px solid #31544c; color: #a8beb4; font-size: 11px; line-height: 1.6; }
+    main { min-width: 0; padding: 26px clamp(18px, 3.1vw, 46px) 36px; }
+    .topline { display: flex; align-items: flex-start; justify-content: space-between; gap: 20px; margin-bottom: 23px; }
+    .eyebrow { margin: 0 0 5px; color: var(--green); font-size: 11px; font-weight: 800; }
+    h1 { margin: 0; font-size: clamp(23px, 3vw, 30px); line-height: 1.25; letter-spacing: 0; }
+    .subhead { margin: 6px 0 0; color: var(--muted); font-size: 13px; }
+    .as-of { flex: none; padding: 8px 11px; border: 1px solid var(--line); border-radius: 5px; background: #fff; color: var(--muted); font-size: 11px; }
+    .header-actions { display: flex; align-items: center; gap: 9px; }
+    .excel-toolbar { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 9px; margin: -10px 0 18px; }
+    .excel-tools { display: flex; flex-wrap: wrap; gap: 7px; }
+    .excel-status { margin-right: auto; color: var(--muted); font-size: 11px; }
+    .excel-status[data-state="connected"] { color: var(--green); font-weight: 700; }
+    .excel-status[data-state="error"] { color: var(--red); }
+    .login-button, .primary-button, .icon-button, .quiet-button { display: inline-flex; align-items: center; justify-content: center; gap: 7px; min-height: 36px; padding: 0 11px; border: 1px solid var(--line); border-radius: 5px; background: #fff; color: var(--ink); font-size: 11px; font-weight: 700; cursor: pointer; }
+    .login-button:hover, .quiet-button:hover, .icon-button:hover { border-color: #9db8aa; background: #f6faf7; }
+    .primary-button { border-color: var(--green); background: var(--green); color: #fff; }
+    .primary-button:hover { background: #0f6555; }
+    .edit-actions { display: flex; align-items: center; gap: 5px; }
+    .icon-button { min-width: 31px; min-height: 30px; padding: 0 7px; color: var(--green); }
+    .icon-button.danger { color: var(--red); }
+    .edit-toolbar { display: flex; align-items: center; gap: 8px; }
+    .editor-note { color: var(--muted); font-size: 10px; }
+    dialog { width: min(520px, calc(100vw - 28px)); max-height: min(90vh, 760px); padding: 0; overflow: auto; border: 1px solid var(--line); border-radius: 8px; background: var(--white); color: var(--ink); box-shadow: 0 24px 70px #173a3533; }
+    dialog::backdrop { background: #102d2980; backdrop-filter: blur(2px); }
+    .dialog-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; padding: 18px 20px 13px; border-bottom: 1px solid var(--line); }
+    .dialog-head h2 { margin: 0; font-size: 17px; }
+    .dialog-head p { margin: 4px 0 0; color: var(--muted); font-size: 11px; }
+    .dialog-body { display: grid; gap: 13px; padding: 16px 20px 20px; }
+    .dialog-form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 11px; }
+    .field { display: grid; gap: 5px; min-width: 0; color: #50665e; font-size: 11px; font-weight: 650; }
+    .field.full { grid-column: 1 / -1; }
+    .field input, .field select { width: 100%; height: 37px; padding: 0 10px; border: 1px solid var(--line); border-radius: 5px; outline: none; background: white; color: var(--ink); font-size: 12px; }
+    .field input:focus, .field select:focus { border-color: var(--green); box-shadow: 0 0 0 2px #14786520; }
+    .dialog-actions { display: flex; justify-content: flex-end; gap: 8px; padding-top: 5px; }
+    .form-error { min-height: 16px; margin: 0; color: var(--red); font-size: 11px; }
+    .security-note { margin: 0; padding: 9px 10px; border-radius: 5px; background: var(--amber-pale); color: #765223; font-size: 10px; line-height: 1.55; }
+    [hidden] { display: none !important; }
+    .view { display: none; animation: enter .24s ease both; }
+    .view.active { display: block; }
+    @keyframes enter { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+    .kpis { display: grid; grid-template-columns: repeat(5, minmax(130px, 1fr)); gap: 11px; margin-bottom: 15px; }
+    .kpi { min-height: 112px; padding: 14px 15px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--white); }
+    .kpi-top { display: flex; align-items: center; justify-content: space-between; gap: 8px; color: var(--muted); font-size: 11px; }
+    .kpi-symbol { width: 29px; height: 29px; display: grid; place-items: center; border-radius: 6px; font-size: 15px; font-weight: 700; }
+    .kpi:nth-child(1) .kpi-symbol { background: var(--green-pale); color: var(--green); }
+    .kpi:nth-child(2) .kpi-symbol { background: var(--blue-pale); color: var(--blue); }
+    .kpi:nth-child(3) .kpi-symbol { background: var(--red-pale); color: var(--red); }
+    .kpi:nth-child(4) .kpi-symbol { background: var(--amber-pale); color: var(--amber); }
+    .kpi:nth-child(5) .kpi-symbol { background: #e8ebf5; color: #59679b; }
+    .kpi-value { margin-top: 9px; font-size: 27px; font-weight: 800; line-height: 1; }
+    .kpi-unit { margin-left: 5px; color: var(--muted); font-size: 11px; font-weight: 500; }
+    .overview-grid { display: grid; grid-template-columns: minmax(0, 1.12fr) minmax(0, .88fr); gap: 14px; }
+    .panel { min-width: 0; border: 1px solid var(--line); border-radius: var(--radius); background: var(--white); }
+    .panel-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; padding: 16px 17px 11px; }
+    .panel-title { margin: 0; font-size: 14px; font-weight: 750; }
+    .panel-note { margin: 4px 0 0; color: var(--muted); font-size: 11px; }
+    .chart-body { padding: 3px 17px 17px; }
+    .asset-chart { display: grid; grid-template-columns: minmax(125px, .9fr) minmax(130px, 1fr); align-items: center; gap: 16px; min-height: 190px; }
+    .donut { width: 154px; max-width: 100%; margin: auto; overflow: visible; }
+    .legend { display: grid; gap: 14px; }
+    .legend-row { display: grid; grid-template-columns: 10px 1fr auto; align-items: center; gap: 9px; font-size: 12px; }
+    .swatch { width: 9px; height: 9px; border-radius: 2px; background: var(--green); }
+    .swatch.blue { background: var(--blue); }
+    .swatch.amber { background: var(--amber); }
+    .legend-name { color: var(--muted); }
+    .legend-value { font-weight: 750; }
+    .stock-chart { display: grid; gap: 15px; padding-top: 10px; }
+    .bar-head { display: flex; justify-content: space-between; gap: 10px; margin-bottom: 6px; font-size: 11px; }
+    .bar-label { color: var(--muted); }
+    .bar-track { height: 8px; overflow: hidden; border-radius: 20px; background: #ecf1ee; }
+    .bar-fill { height: 100%; width: var(--width); border-radius: inherit; background: var(--green); transform-origin: left; animation: grow .55s cubic-bezier(.2,.7,.2,1) both; }
+    .bar-fill.blue { background: var(--blue); }
+    .bar-fill.amber { background: var(--amber); }
+    .bar-fill.red { background: var(--red); }
+    @keyframes grow { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+    .lower-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(300px, .84fr); gap: 14px; margin-top: 14px; }
+    .compact-list { padding: 0 17px 14px; }
+    .damage-row { display: grid; grid-template-columns: minmax(0,1fr) 94px 23px; align-items: center; gap: 10px; min-height: 35px; border-top: 1px solid #edf1ee; font-size: 11px; }
+    .damage-row:first-child { border-top: 0; }
+    .damage-track { height: 5px; overflow: hidden; border-radius: 10px; background: #f0f2ef; }
+    .damage-fill { height: 100%; width: var(--width); border-radius: inherit; background: var(--red); }
+    .damage-count { text-align: right; font-weight: 750; }
+    .stock-pills { display: grid; grid-template-columns: 1fr 1fr; gap: 9px; padding: 4px 17px 17px; }
+    .stock-pill { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 11px; border-radius: 5px; background: #f3f7f4; font-size: 11px; }
+    .stock-pill strong { font-size: 17px; }
+    .section-toolbar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 11px; padding: 12px 14px; border-bottom: 1px solid var(--line); }
+    .toolbar-group { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+    .search-wrap { position: relative; }
+    .search-icon { position: absolute; top: 50%; left: 10px; transform: translateY(-50%); color: #74867f; font-size: 15px; }
+    .search-input, .filter-select { height: 35px; border: 1px solid var(--line); border-radius: 5px; outline: none; background: #fff; color: var(--ink); font-size: 11px; }
+    .search-input { width: min(270px, 65vw); padding: 0 10px 0 31px; }
+    .filter-select { min-width: 128px; padding: 0 9px; }
+    .search-input:focus, .filter-select:focus { border-color: var(--green); box-shadow: 0 0 0 2px #14786520; }
+    .result-count { color: var(--muted); font-size: 11px; }
+    .table-wrap { width: 100%; overflow: auto; }
+    table { width: 100%; border-collapse: collapse; text-align: left; white-space: nowrap; }
+    th { position: sticky; top: 0; z-index: 1; padding: 10px 13px; background: #f5f8f6; color: #667a72; font-size: 10px; font-weight: 750; }
+    td { padding: 10px 13px; border-top: 1px solid #edf1ee; font-size: 11px; }
+    tbody tr:hover { background: #f7faf8; }
+    .type-badge, .status-badge { display: inline-flex; align-items: center; gap: 5px; padding: 4px 7px; border-radius: 4px; background: var(--green-pale); color: var(--green); font-size: 10px; font-weight: 700; }
+    .type-badge.pc { background: var(--blue-pale); color: var(--blue); }
+    .type-badge.all-in-one { background: var(--amber-pale); color: #8b5b24; }
+    .type-badge.other { background: var(--red-pale); color: var(--red); }
+    .status-badge { background: var(--red-pale); color: var(--red); }
+    .empty-state { display: none; padding: 28px 14px; color: var(--muted); text-align: center; font-size: 12px; }
+    .inventory-footer { padding: 10px 14px; border-top: 1px solid var(--line); color: var(--muted); font-size: 10px; }
+    @media (max-width: 1050px) {
+      .app { grid-template-columns: 190px minmax(0, 1fr); }
+      .kpis { grid-template-columns: repeat(3, minmax(120px, 1fr)); }
+      .lower-grid { grid-template-columns: 1fr; }
+    }
+    @media (max-width: 720px) {
+      .app { display: block; padding-bottom: 65px; }
+      .rail { position: fixed; z-index: 5; inset: auto 0 0; height: 61px; flex-direction: row; justify-content: center; gap: 0; padding: 5px 8px max(5px, env(safe-area-inset-bottom)); border-top: 1px solid #31544c; }
+      .brand, .nav-label, .rail-bottom { display: none; }
+      .nav { width: 100%; max-width: 620px; grid-template-columns: repeat(5, 1fr); gap: 3px; }
+      .nav-button { min-height: 49px; flex-direction: column; justify-content: center; gap: 1px; padding: 3px 2px; font-size: 9px; text-align: center; }
+      .nav-icon { font-size: 15px; }
+      main { padding: 20px 14px 26px; }
+      .topline { margin-bottom: 18px; }
+      .header-actions { align-items: flex-end; flex-direction: column; gap: 5px; }
+      .excel-toolbar { align-items: flex-start; justify-content: space-between; margin-top: -7px; }
+      .excel-status { width: 100%; }
+      .excel-tools { width: 100%; }
+      .excel-tools button { flex: 1; }
+      .as-of { max-width: 114px; padding: 5px 7px; text-align: center; line-height: 1.35; }
+      .login-button { min-height: 30px; padding: 0 8px; font-size: 10px; }
+      .kpis { grid-template-columns: repeat(2, minmax(0,1fr)); gap: 8px; }
+      .kpi { min-height: 96px; padding: 11px; }
+      .kpi-value { font-size: 24px; }
+      .kpi-top { font-size: 10px; }
+      .kpi-symbol { width: 26px; height: 26px; }
+      .overview-grid { grid-template-columns: 1fr; gap: 10px; }
+      .lower-grid { gap: 10px; margin-top: 10px; }
+      .asset-chart { grid-template-columns: minmax(110px, .8fr) minmax(125px, 1fr); gap: 8px; }
+      .donut { width: 135px; }
+      .damage-row { grid-template-columns: minmax(0,1fr) 67px 18px; gap: 7px; }
+      .section-toolbar { align-items: flex-start; }
+      .toolbar-group { width: 100%; }
+      .search-wrap { flex: 1; }
+      .search-input { width: 100%; }
+      .table-wrap { max-height: calc(100vh - 250px); }
+      .edit-toolbar { width: 100%; justify-content: space-between; }
+      .editor-note { font-size: 9px; }
+      .dialog-form-grid { grid-template-columns: 1fr; }
+      .field.full { grid-column: auto; }
+      .dialog-head, .dialog-body { padding-left: 15px; padding-right: 15px; }
+    }
+    .withdrawal-layout { display: grid; grid-template-columns: minmax(290px, .8fr) minmax(0, 1.2fr); gap: 14px; align-items: start; }
+    .withdrawal-form { display: grid; gap: 14px; padding: 17px; }
+    .form-section-title { margin: 0 0 2px; font-size: 13px; font-weight: 750; }
+    .withdrawal-fields { display: grid; grid-template-columns: 1fr 1fr; gap: 11px; }
+    .withdrawal-fields .field.full { grid-column: 1 / -1; }
+    .available-hint { padding: 10px 11px; border-radius: 5px; background: var(--green-pale); color: #285d4e; font-size: 11px; line-height: 1.55; }
+    .withdrawal-submit { justify-self: start; min-width: 145px; }
+    .history-status { color: var(--green); font-weight: 700; }
+    @media (max-width: 900px) { .withdrawal-layout { grid-template-columns: 1fr; } }
+    @media (max-width: 720px) { .withdrawal-fields { grid-template-columns: 1fr; } .withdrawal-fields .field.full { grid-column: auto; } }
+    @media (prefers-reduced-motion: reduce) { *, *::before, *::after { scroll-behavior: auto !important; animation-duration: .01ms !important; transition-duration: .01ms !important; } }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <aside class="rail" aria-label="เมนูหลัก">
+      <div class="brand"><div class="brand-mark" aria-hidden="true">A</div><div><div class="brand-name">Asset</div><div class="brand-caption">INVENTORY CONTROL</div></div></div>
+      <div>
+        <div class="nav-label">WORKSPACE</div>
+        <nav class="nav">
+          <button class="nav-button" data-view="overview" aria-current="page"><span class="nav-icon" aria-hidden="true">◫</span><span>ภาพรวม</span></button>
+          <button class="nav-button" data-view="assets"><span class="nav-icon" aria-hidden="true">▣</span><span>กำลังใช้งาน</span></button>
+          <button class="nav-button" data-view="stock"><span class="nav-icon" aria-hidden="true">▤</span><span>สต็อก IT</span></button>
+          <button class="nav-button" data-view="withdrawal"><span class="nav-icon" aria-hidden="true">↗</span><span>เบิกอุปกรณ์</span></button>
+          <button class="nav-button" data-view="damage"><span class="nav-icon" aria-hidden="true">⌁</span><span>ชำรุด</span></button>
+        </nav>
+      </div>
+      <div class="rail-bottom">ข้อมูลจาก Asset.xlsx<br>Snapshot · 30 ก.ย. 2026</div>
+    </aside>
+
+    <main>
+      <header class="topline">
+        <div><p class="eyebrow">ASSET MANAGEMENT</p><h1 id="page-title">ภาพรวมทรัพย์สิน</h1><p class="subhead" id="page-subtitle">สถานะอุปกรณ์และสต็อกทั้งหมดในที่เดียว</p></div>
+        <div class="header-actions">
+          <div class="as-of">ข้อมูล ณ<br><strong>30 ก.ย. 2026</strong></div>
+          <button class="login-button" id="login-button" type="button"><span aria-hidden="true">▣</span><span id="login-label">เข้าสู่ระบบ</span></button>
+        </div>
+      </header>
+      <section class="excel-toolbar" aria-label="บันทึกและส่งออก Excel">
+        <span class="excel-status" id="excel-status" data-state="disconnected">เชื่อมไฟล์ Asset-Inventory-2026-10-01T03-45-34.xlsx เพื่อบันทึกอัตโนมัติ</span>
+        <div class="excel-tools">
+          <button class="quiet-button" id="connect-excel-button" type="button" title="เลือกไฟล์ Asset-Inventory-2026-10-01T03-45-34.xlsx เพื่อบันทึกอัตโนมัติ"><span aria-hidden="true">▣</span> เชื่อมไฟล์ Excel</button>
+          <button class="primary-button" id="export-excel-button" type="button" title="ดาวน์โหลดข้อมูลทั้งหมดเป็นไฟล์ Excel"><span aria-hidden="true">⇩</span> ส่งออก Excel</button>
+        </div>
+      </section>
+
+      <section class="view active" id="view-overview" aria-label="ภาพรวม">
+        <div class="kpis">
+          <article class="kpi"><div class="kpi-top"><span>อุปกรณ์ที่ใช้งาน</span><span class="kpi-symbol" aria-hidden="true">▣</span></div><div class="kpi-value"><span id="active-total">5</span><span class="kpi-unit">รายการ</span></div></article>
+          <article class="kpi"><div class="kpi-top"><span>อุปกรณ์ในสต็อก</span><span class="kpi-symbol" aria-hidden="true">▤</span></div><div class="kpi-value"><span id="stock-total">14</span><span class="kpi-unit">ชิ้น</span></div></article>
+          <article class="kpi"><div class="kpi-top"><span>รายการชำรุด</span><span class="kpi-symbol" aria-hidden="true">⌁</span></div><div class="kpi-value">6<span class="kpi-unit">เครื่อง</span></div></article>
+          <article class="kpi"><div class="kpi-top"><span>เมาส์คงเหลือ</span><span class="kpi-symbol" aria-hidden="true">⌖</span></div><div class="kpi-value"><span id="mouse-total">23</span><span class="kpi-unit">ชิ้น</span></div></article>
+          <article class="kpi"><div class="kpi-top"><span>คีย์บอร์ดคงเหลือ</span><span class="kpi-symbol" aria-hidden="true">⌨</span></div><div class="kpi-value"><span id="keyboard-total">15</span><span class="kpi-unit">ชิ้น</span></div></article>
+        </div>
+
+        <div class="overview-grid">
+          <section class="panel">
+            <div class="panel-head"><div><h2 class="panel-title">อุปกรณ์ที่กำลังใช้งาน</h2><p class="panel-note">จำแนกตามประเภทคอมพิวเตอร์</p></div></div>
+            <div class="chart-body asset-chart">
+              <svg class="donut" id="asset-donut" viewBox="0 0 160 160" role="img" aria-label="Notebook 3 เครื่อง, PC 2 เครื่อง">
+                <circle cx="80" cy="80" r="57" fill="none" stroke="#edf2ef" stroke-width="18"/>
+                <circle id="donut-notebook" cx="80" cy="80" r="57" fill="none" stroke="#147865" stroke-width="18" stroke-dasharray="215 358" transform="rotate(-90 80 80)"/>
+                <circle id="donut-pc" cx="80" cy="80" r="57" fill="none" stroke="#377ba0" stroke-width="18" stroke-dasharray="143 358" stroke-dashoffset="-215" transform="rotate(-90 80 80)"/>
+                <circle id="donut-all-in-one" cx="80" cy="80" r="57" fill="none" stroke="#bd7a34" stroke-width="18" stroke-dasharray="0 358" stroke-dashoffset="-358" transform="rotate(-90 80 80)"/>
+                <text id="donut-total" x="80" y="77" text-anchor="middle" fill="#18352f" font-size="28" font-weight="800">5</text>
+                <text x="80" y="96" text-anchor="middle" fill="#647872" font-size="10">เครื่อง</text>
+              </svg>
+              <div class="legend">
+                <div class="legend-row"><span class="swatch"></span><span class="legend-name">Notebook</span><span class="legend-value" id="notebook-total">3</span></div>
+                <div class="legend-row"><span class="swatch blue"></span><span class="legend-name">PC</span><span class="legend-value" id="pc-total">2</span></div>
+                <div class="legend-row"><span class="swatch amber"></span><span class="legend-name">All-in-one</span><span class="legend-value" id="all-in-one-total">0</span></div>
+              </div>
+            </div>
+          </section>
+          <section class="panel">
+            <div class="panel-head"><div><h2 class="panel-title">สต็อกอุปกรณ์ IT</h2><p class="panel-note" id="stock-chart-note">คอมพิวเตอร์และอุปกรณ์อื่นๆ · รวม 14 ชิ้น</p></div></div>
+            <div class="chart-body stock-chart">
+              <div><div class="bar-head"><span>Notebook</span><strong id="stock-notebook-total">3</strong></div><div class="bar-track"><div class="bar-fill" id="stock-notebook-bar" style="--width:21.43%"></div></div></div>
+              <div><div class="bar-head"><span>PC</span><strong id="stock-pc-total">11</strong></div><div class="bar-track"><div class="bar-fill blue" id="stock-pc-bar" style="--width:78.57%"></div></div></div>
+              <div><div class="bar-head"><span>All-in-one</span><strong id="stock-all-in-one-total">0</strong></div><div class="bar-track"><div class="bar-fill amber" id="stock-all-in-one-bar" style="--width:0%"></div></div></div>
+              <div><div class="bar-head"><span>อุปกรณ์อื่นๆ</span><strong id="stock-other-total">0</strong></div><div class="bar-track"><div class="bar-fill red" id="stock-other-bar" style="--width:0%"></div></div></div>
+            </div>
+          </section>
+        </div>
+
+        <div class="lower-grid">
+          <section class="panel">
+            <div class="panel-head"><div><h2 class="panel-title">สาเหตุของรายการชำรุด</h2><p class="panel-note">Notebook · 6 เครื่อง</p></div></div>
+            <div class="compact-list">
+              <div class="damage-row"><span>ขาพับจอเสีย</span><div class="damage-track"><div class="damage-fill" style="--width:50%"></div></div><span class="damage-count">3</span></div>
+              <div class="damage-row"><span>ช่อง USB เสีย 2 ช่อง</span><div class="damage-track"><div class="damage-fill" style="--width:33.33%"></div></div><span class="damage-count">2</span></div>
+              <div class="damage-row"><span>แบตเตอรี่เสื่อม</span><div class="damage-track"><div class="damage-fill" style="--width:16.67%"></div></div><span class="damage-count">1</span></div>
+            </div>
+          </section>
+          <section class="panel">
+            <div class="panel-head"><div><h2 class="panel-title">อุปกรณ์เสริมคงเหลือ</h2><p class="panel-note">ยอดคงเหลือตามชีต Mouse,Key</p></div></div>
+            <div class="stock-pills"><div class="stock-pill"><span>เมาส์</span><strong id="mouse-stock-total">23</strong></div><div class="stock-pill"><span>คีย์บอร์ด</span><strong id="keyboard-stock-total">15</strong></div></div>
+          </section>
+        </div>
+      </section>
+
+      <section class="view" id="view-assets" aria-label="อุปกรณ์ที่กำลังใช้งาน">
+        <section class="panel">
+          <div class="section-toolbar"><div class="toolbar-group"><div class="search-wrap"><span class="search-icon" aria-hidden="true">⌕</span><input class="search-input" type="search" placeholder="ค้นหาชื่อ, แผนก, Serial No." aria-label="ค้นหาอุปกรณ์ที่ใช้งาน" data-search="assets"></div><select class="filter-select" aria-label="กรองประเภท" data-filter="type"><option value="">ทุกประเภท</option><option>Notebook</option><option>PC</option><option>All-in-one</option></select></div><div class="edit-toolbar"><span class="result-count" data-count="assets">5 รายการ</span><button class="primary-button" id="add-asset-button" type="button" hidden>＋ เพิ่มรายการ</button></div></div>
+          <div class="table-wrap"><table><thead><tr><th>ผู้ใช้งาน</th><th>แผนก</th><th>สถานที่</th><th>ชื่อคอมพิวเตอร์</th><th>ประเภท</th><th>Serial No.</th><th>ยี่ห้อ</th><th>อุปกรณ์เสริม</th><th data-editor-column hidden>จัดการ</th></tr></thead><tbody id="assets-body"></tbody></table><div class="empty-state" data-empty="assets">ไม่พบรายการที่ตรงกับคำค้น</div></div>
+          <div class="inventory-footer">รายการอุปกรณ์ที่กำหนดให้ผู้ใช้งานจากชีต Asset</div>
+        </section>
+      </section>
+
+      <section class="view" id="view-stock" aria-label="สต็อกอุปกรณ์ IT">
+        <section class="panel">
+          <div class="section-toolbar"><div class="toolbar-group"><div class="search-wrap"><span class="search-icon" aria-hidden="true">⌕</span><input class="search-input" type="search" placeholder="ค้นหาประเภท, Serial No., รุ่น" aria-label="ค้นหาสต็อก" data-search="stock"></div><select class="filter-select" aria-label="กรองประเภทสต็อก" data-filter="type"><option value="">ทุกประเภท</option><option>Notebook</option><option>PC</option><option>All-in-one</option><option>อุปกรณ์อื่นๆ</option></select></div><div class="edit-toolbar"><span class="result-count" data-count="stock">14 รายการ</span><button class="primary-button" id="add-stock-button" type="button" hidden>＋ เพิ่มรายการ</button></div></div>
+          <div class="table-wrap"><table><thead><tr><th>ประเภท</th><th>Serial No.</th><th>ยี่ห้อ</th><th>รุ่น / ชื่ออุปกรณ์</th><th>จำนวน</th><th>อะแดปเตอร์</th><th>ประกัน</th><th data-stock-editor-column hidden>จัดการ</th></tr></thead><tbody id="stock-body"></tbody></table><div class="empty-state" data-empty="stock">ไม่พบรายการที่ตรงกับคำค้น</div></div>
+          <div class="inventory-footer">คอมพิวเตอร์และอุปกรณ์อื่นๆ พร้อมจ่ายจากสต็อก IT</div>
+        </section>
+        <section class="panel accessory-stock-panel">
+          <div class="panel-head"><div><h2 class="panel-title">สต็อกเมาส์และคีย์บอร์ด</h2><p class="panel-note">รับเข้าได้จากหน้านี้ และยอดจะเชื่อมกับฟอร์มเบิก</p></div><button class="primary-button" id="add-accessory-stock-button" type="button" hidden>＋ รับเข้าอุปกรณ์</button></div>
+          <div class="table-wrap"><table><thead><tr><th>อุปกรณ์</th><th>จำนวนคงเหลือ</th><th data-accessory-editor-column hidden>จัดการ</th></tr></thead><tbody id="accessory-stock-body"></tbody></table></div>
+        </section>
+      </section>
+
+      <section class="view" id="view-withdrawal" aria-label="เบิกอุปกรณ์">
+        <div class="withdrawal-layout">
+          <section class="panel">
+            <div class="panel-head"><div><h2 class="panel-title">แบบฟอร์มเบิกอุปกรณ์</h2><p class="panel-note">เลือกรายการจากสต็อกปัจจุบัน</p></div></div>
+            <form id="withdrawal-form" class="withdrawal-form">
+              <p class="form-section-title">ข้อมูลผู้เบิก</p>
+              <div class="withdrawal-fields">
+                <label class="field">ชื่อผู้เบิก<input name="requester" autocomplete="name" required></label>
+                <label class="field">แผนก<input name="department" required></label>
+                <label class="field">สถานที่รับอุปกรณ์<input name="location"></label>
+                <label class="field">วันที่เบิก<input name="date" type="date" required></label>
+                <label class="field full">อุปกรณ์ที่ต้องการเบิก<select name="item" id="withdrawal-item" required></select></label>
+                <label class="field" id="withdrawal-quantity-field">จำนวน<input name="quantity" id="withdrawal-quantity" type="number" min="1" step="1" value="1" required></label>
+                <label class="field full">หมายเหตุ<input name="note" placeholder="ระบุเหตุผลหรือรายละเอียดเพิ่มเติม"></label>
+              </div>
+              <div class="available-hint" id="withdrawal-availability" role="status"></div>
+              <p class="form-error" id="withdrawal-error" role="alert"></p>
+              <button class="primary-button withdrawal-submit" type="submit">บันทึกการเบิก</button>
+            </form>
+          </section>
+          <section class="panel">
+            <div class="panel-head"><div><h2 class="panel-title">ประวัติการเบิก</h2><p class="panel-note">บันทึกจากเบราว์เซอร์นี้</p></div><strong class="result-count" id="withdrawal-count">0 รายการ</strong></div>
+            <div class="table-wrap"><table><thead><tr><th>วันที่</th><th>ผู้เบิก</th><th>อุปกรณ์</th><th>จำนวน</th><th>สถานะ</th></tr></thead><tbody id="withdrawal-history-body"></tbody></table><div class="empty-state" id="withdrawal-empty">ยังไม่มีรายการเบิก</div></div>
+          </section>
+        </div>
+      </section>
+
+      <section class="view" id="view-damage" aria-label="อุปกรณ์ชำรุด">
+        <section class="panel">
+          <div class="section-toolbar"><div class="toolbar-group"><div class="search-wrap"><span class="search-icon" aria-hidden="true">⌕</span><input class="search-input" type="search" placeholder="ค้นหา Serial No., รุ่น, อาการ" aria-label="ค้นหารายการชำรุด" data-search="damage"></div><select class="filter-select" aria-label="กรองประเภทอุปกรณ์ชำรุด" data-filter="type"><option value="">ทุกประเภท</option><option>Notebook</option><option>PC</option><option>All-in-one</option></select></div><div class="edit-toolbar"><span class="result-count" data-count="damage">6 รายการ</span><button class="primary-button" id="add-damage-button" type="button" hidden>＋ เพิ่มรายการ</button></div></div>
+          <div class="table-wrap"><table><thead><tr><th>ประเภท</th><th>Serial No.</th><th>ยี่ห้อ</th><th>รุ่น</th><th>อะแดปเตอร์</th><th>ประกัน</th><th>อาการชำรุด</th><th data-damage-editor-column hidden>จัดการ</th></tr></thead><tbody id="damage-body"></tbody></table><div class="empty-state" data-empty="damage">ไม่พบรายการที่ตรงกับคำค้น</div></div>
+          <div class="inventory-footer">รายการชำรุดจากชีต Damage</div>
+        </section>
+      </section>
+    </main>
+  </div>
+
+  <dialog id="auth-dialog" aria-labelledby="auth-title">
+    <form class="dialog-body" id="login-form">
+      <div class="dialog-head"><div><h2 id="auth-title">เข้าสู่ระบบผู้ดูแล</h2><p>ลงชื่อเข้าใช้เพื่อแก้ไขทรัพย์สินและสต็อก IT</p></div><button class="icon-button" type="button" data-close-dialog="auth-dialog" aria-label="ปิด">×</button></div>
+      <label class="field">รหัสผู้ใช้<input name="userId" autocomplete="username" required></label>
+      <label class="field">รหัสผ่าน<input name="accessCode" type="password" autocomplete="current-password" required></label>
+      <p class="form-error" id="login-error" role="alert"></p>
+      <p class="security-note">การเข้าสู่ระบบนี้เป็นการล็อกหน้าจอในไฟล์ HTML และไม่ได้ป้องกันผู้ใช้ที่เปิดดูซอร์สโค้ด</p>
+      <div class="dialog-actions"><button class="quiet-button" type="button" data-close-dialog="auth-dialog">ยกเลิก</button><button class="primary-button" type="submit">เข้าสู่ระบบ</button></div>
+    </form>
+  </dialog>
+
+  <dialog id="asset-dialog" aria-labelledby="asset-dialog-title">
+    <form class="dialog-body" id="asset-form">
+      <div class="dialog-head"><div><h2 id="asset-dialog-title">เพิ่มทรัพย์สิน</h2><p>รายละเอียดอุปกรณ์และผู้รับผิดชอบ</p></div><button class="icon-button" type="button" data-close-dialog="asset-dialog" aria-label="ปิด">×</button></div>
+      <input name="recordIndex" type="hidden" value="-1">
+      <div class="dialog-form-grid">
+        <label class="field">ชื่อผู้ใช้งาน<input name="user" required></label>
+        <label class="field">แผนก<input name="department"></label>
+        <label class="field">สถานที่<input name="location"></label>
+        <label class="field">ชื่อคอมพิวเตอร์<input name="name" required></label>
+        <label class="field">ประเภท<select name="type" required><option>Notebook</option><option>PC</option><option>All-in-one</option></select></label>
+        <label class="field">Serial No.<input name="serial" required></label>
+        <label class="field">ยี่ห้อ<input name="brand"></label>
+        <label class="field">Adapter<input name="adapter"></label>
+        <label class="field">Mouse<input name="mouse"></label>
+        <label class="field">Keyboard<input name="keyboard"></label>
+        <label class="field">Monitor<input name="monitor"></label>
+      </div>
+      <p class="form-error" id="asset-error" role="alert"></p>
+      <div class="dialog-actions"><button class="quiet-button" type="button" data-close-dialog="asset-dialog">ยกเลิก</button><button class="primary-button" type="submit">บันทึกรายการ</button></div>
+    </form>
+  </dialog>
+
+  <dialog id="stock-dialog" aria-labelledby="stock-dialog-title">
+    <form class="dialog-body" id="stock-form">
+      <div class="dialog-head"><div><h2 id="stock-dialog-title">เพิ่มคอมพิวเตอร์ในสต็อก</h2><p>รายละเอียดเครื่องและวันสิ้นสุดการรับประกัน</p></div><button class="icon-button" type="button" data-close-dialog="stock-dialog" aria-label="ปิด">×</button></div>
+      <input name="recordIndex" type="hidden" value="-1">
+      <div class="dialog-form-grid">
+        <label class="field">ประเภท<select name="type" id="stock-type" required><option>Notebook</option><option>PC</option><option>All-in-one</option><option>อุปกรณ์อื่นๆ</option><option>เมาส์</option><option>คีย์บอร์ด</option></select></label>
+        <label class="field" id="stock-serial-field">Serial No.<input name="serial" id="stock-serial"></label>
+        <label class="field">ยี่ห้อ<input name="brand" required></label>
+        <label class="field">รุ่น / ชื่ออุปกรณ์<input name="series" required></label>
+        <label class="field full" id="stock-quantity-field" hidden>จำนวนคงเหลือ<input name="quantity" id="stock-quantity" type="number" min="1" step="1" value="1"></label>
+        <label class="field" id="stock-adapter-field">อะแดปเตอร์<select name="adapter"><option value="">ไม่มี</option><option value="/">มี</option></select></label>
+        <label class="field full">ประกัน<input name="warranty" placeholder="เช่น มี.ค. 2027 หรือ สิ้นสุด"></label>
+      </div>
+      <p class="form-error" id="stock-error" role="alert"></p>
+      <div class="dialog-actions"><button class="quiet-button" type="button" data-close-dialog="stock-dialog">ยกเลิก</button><button class="primary-button" type="submit">บันทึกรายการ</button></div>
+    </form>
+  </dialog>
+
+  <dialog id="accessory-stock-dialog" aria-labelledby="accessory-stock-title">
+    <form class="dialog-body" id="accessory-stock-form">
+      <div class="dialog-head"><div><h2 id="accessory-stock-title">รับเข้าเมาส์หรือคีย์บอร์ด</h2><p id="accessory-stock-description">จำนวนที่รับเข้าจะเพิ่มในยอดคงเหลือและไฟล์ Excel</p></div><button class="icon-button" type="button" data-close-dialog="accessory-stock-dialog" aria-label="ปิด">×</button></div>
+      <label class="field">อุปกรณ์<select name="item" required><option value="mouse">เมาส์</option><option value="keyboard">คีย์บอร์ด</option></select></label>
+      <label class="field"><span id="accessory-stock-quantity-label">จำนวนที่รับเข้า</span><input name="quantity" type="number" min="1" step="1" value="1" required></label>
+      <p class="form-error" id="accessory-stock-error" role="alert"></p>
+      <div class="dialog-actions"><button class="quiet-button" type="button" data-close-dialog="accessory-stock-dialog">ยกเลิก</button><button class="primary-button" id="accessory-stock-submit" type="submit">บันทึกรับเข้า</button></div>
+    </form>
+  </dialog>
+
+  <dialog id="damage-dialog" aria-labelledby="damage-dialog-title">
+    <form class="dialog-body" id="damage-form">
+      <div class="dialog-head"><div><h2 id="damage-dialog-title">เพิ่มรายการชำรุด</h2><p>ข้อมูลอุปกรณ์และรายละเอียดอาการ</p></div><button class="icon-button" type="button" data-close-dialog="damage-dialog" aria-label="ปิด">×</button></div>
+      <input name="recordIndex" type="hidden" value="-1">
+      <div class="dialog-form-grid">
+        <label class="field">ประเภท<select name="type" required><option>Notebook</option><option>PC</option><option>All-in-one</option></select></label>
+        <label class="field">Serial No.<input name="serial" required></label>
+        <label class="field">ยี่ห้อ<input name="brand" required></label>
+        <label class="field">รุ่น<input name="series" required></label>
+        <label class="field">อะแดปเตอร์<select name="adapter"><option value="">ไม่มี</option><option value="/">มี</option></select></label>
+        <label class="field">ประกัน<input name="warranty" placeholder="เช่น มี.ค. 2027 หรือ สิ้นสุด"></label>
+        <label class="field full">อาการชำรุด<input name="damage" required></label>
+      </div>
+      <p class="form-error" id="damage-error" role="alert"></p>
+      <div class="dialog-actions"><button class="quiet-button" type="button" data-close-dialog="damage-dialog">ยกเลิก</button><button class="primary-button" type="submit">บันทึกรายการ</button></div>
+    </form>
+  </dialog>
+
+  <script src="vendor/xlsx.full.min.js"></script>
+  <script>
+    const defaultAssetRows = [
+      {user:'PVilaikan', department:'HR', location:'Office', name:'PVilaikan', type:'Notebook', serial:'PF54X1CG', brand:'Dell', adapter:'/', mouse:'/', keyboard:'', monitor:''},
+      {user:'Pachari Wongmuang [Pla]', department:'inbound', location:'inbound', name:'inbound01', type:'PC', serial:'GM0RFR3W', brand:'Lenovo', adapter:'', mouse:'/', keyboard:'/', monitor:'/'},
+      {user:'Salinthip Seesuwong', department:'B2B', location:'B2B', name:'Salinthip-Seesuwong-B2B', type:'Notebook', serial:'PF5504GA', brand:'Lenovo', adapter:'/', mouse:'/', keyboard:'', monitor:''},
+      {user:'Pachari Wongmuang [Pla]', department:'inbound', location:'inbound', name:'Inbound4', type:'Notebook', serial:'7BV3BG3', brand:'Dell', adapter:'/', mouse:'/', keyboard:'', monitor:''},
+      {user:'หัวหน้าB2B', department:'B2B', location:'B2B', name:'B2B01', type:'PC', serial:'GM0RFR4T', brand:'Lenovo', adapter:'', mouse:'/', keyboard:'/', monitor:'/'}
+    ];
+    const assetStorageKey = 'asset-dashboard.assets.v1';
+    const assetRows = restoreAssetRows();
+    let isAuthenticated = false;
+    let editingIndex = -1;
+
+    function restoreAssetRows() {
+      try {
+        const savedRows = JSON.parse(localStorage.getItem(assetStorageKey) || 'null');
+        if (Array.isArray(savedRows) && savedRows.every(row => row && typeof row === 'object')) return savedRows;
+      } catch {}
+      return defaultAssetRows.map(row => ({...row}));
+    }
+
+    function persistAssetRows() {
+      try {
+        localStorage.setItem(assetStorageKey, JSON.stringify(assetRows));
+        return true;
+      } catch {
+        return false;
+      }
+    }
+
+    const defaultStockRows = [
+      {type:'Notebook', serial:'8KPQMJ3', brand:'Dell', series:'Inspiron 15 3511', adapter:'/', warranty:'สิ้นสุด'},
+      {type:'Notebook', serial:'PF54ZFSQ', brand:'Lenovo', series:'IdeaPad Slim 3 14IAH8 - Type 83EQ', adapter:'/', warranty:'พ.ย. 2026'},
+      {type:'Notebook', serial:'PF5495LL', brand:'Lenovo', series:'IdeaPad Slim 3 15IRH8 - Type 83EM', adapter:'/', warranty:'สิ้นสุด'},
+      {type:'PC', serial:'GM0J67S6', brand:'Lenovo', series:'V55t Gen 2 13ACN Desktop (Lenovo) - Type 11RN', warranty:'มี.ค. 2027'},
+      {type:'PC', serial:'GM0J67NY', brand:'Lenovo', series:'V55t Gen 2 13ACN Desktop (Lenovo) - Type 11RN', warranty:'มี.ค. 2027'},
+      {type:'PC', serial:'2N7LSH3', brand:'Dell', series:'OptiPlex 3080 Tower', warranty:'สิ้นสุด'},
+      {type:'PC', serial:'GM0J67LZ', brand:'Lenovo', series:'V55t Gen 2 13ACN Desktop (Lenovo) - Type 11RN', warranty:'มี.ค. 2027'},
+      {type:'PC', serial:'GM0J67N0', brand:'Lenovo', series:'V55t Gen 2 13ACN Desktop (Lenovo) - Type 11RN', warranty:'มี.ค. 2027'},
+      {type:'PC', serial:'GM0J67P2', brand:'Lenovo', series:'V55t Gen 2 13ACN Desktop (Lenovo) - Type 11RN', warranty:'มี.ค. 2027'},
+      {type:'PC', serial:'GM0J67R5', brand:'Lenovo', series:'V55t Gen 2 13ACN Desktop (Lenovo) - Type 11RN', warranty:'มี.ค. 2027'},
+      {type:'PC', serial:'GM0J67PS', brand:'Lenovo', series:'V55t Gen 2 13ACN Desktop (Lenovo) - Type 11RN', warranty:'มี.ค. 2027'},
+      {type:'PC', serial:'GM0J67PF', brand:'Lenovo', series:'V55t Gen 2 13ACN Desktop (Lenovo) - Type 11RN', warranty:'มี.ค. 2027'},
+      {type:'PC', serial:'GM0J67S3', brand:'Lenovo', series:'V55t Gen 2 13ACN Desktop (Lenovo) - Type 11RN', warranty:'มี.ค. 2027'},
+      {type:'PC', serial:'GM0J67NV', brand:'Lenovo', series:'V55t Gen 2 13ACN Desktop (Lenovo) - Type 11RN', warranty:'มี.ค. 2027'}
+    ];
+    const stockStorageKey = 'asset-dashboard.stockRows.v1';
+    const stockRows = restoreStockRows();
+
+    function restoreStockRows() {
+      try {
+        const savedRows = JSON.parse(localStorage.getItem(stockStorageKey) || 'null');
+        if (Array.isArray(savedRows) && savedRows.every(row => row && typeof row === 'object')) {
+          return savedRows.map(row => ({...row, adapter: row.adapter ?? defaultStockRows.find(item => item.serial && item.serial === row.serial)?.adapter ?? ''}));
+        }
+      } catch {}
+      return defaultStockRows.map(row => ({...row}));
+    }
+
+    function persistStockRows() {
+      try {
+        localStorage.setItem(stockStorageKey, JSON.stringify(stockRows));
+        return true;
+      } catch {
+        return false;
+      }
+    }
+
+    const accessoryStorageKey = 'asset-dashboard.accessories.v1';
+    const withdrawalStorageKey = 'asset-dashboard.withdrawals.v1';
+    const accessoryStock = restoreAccessoryStock();
+    const withdrawalRows = restoreWithdrawals();
+    let accessoryStockAction = 'receive';
+
+    function restoreAccessoryStock() {
+      try {
+        const saved = JSON.parse(localStorage.getItem(accessoryStorageKey) || 'null');
+        if (saved && Number.isInteger(saved.mouse) && Number.isInteger(saved.keyboard) && saved.mouse >= 0 && saved.keyboard >= 0) return saved;
+      } catch {}
+      return {mouse: 23, keyboard: 15};
+    }
+
+    function persistAccessoryStock() {
+      try {
+        localStorage.setItem(accessoryStorageKey, JSON.stringify(accessoryStock));
+        return true;
+      } catch {
+        return false;
+      }
+    }
+
+    function restoreWithdrawals() {
+      try {
+        const saved = JSON.parse(localStorage.getItem(withdrawalStorageKey) || '[]');
+        if (Array.isArray(saved)) return saved;
+      } catch {}
+      return [];
+    }
+
+    function persistWithdrawals() {
+      try {
+        localStorage.setItem(withdrawalStorageKey, JSON.stringify(withdrawalRows));
+        return true;
+      } catch {
+        return false;
+      }
+    }
+
+    const defaultDamageRows = [
+      {type:'Notebook', serial:'BZ6BNJ3', brand:'Dell', series:'Inspiron 15 3511', adapter:'', warranty:'สิ้นสุด', damage:'ขาพับจอเสีย'},
+      {type:'Notebook', serial:'DZJ2HG3', brand:'Dell', series:'Latitude 3420', adapter:'/', warranty:'สิ้นสุด', damage:'ช่องUSBเสีย2ช่อง'},
+      {type:'Notebook', serial:'C5BRMJ3', brand:'Dell', series:'Inspiron 15 3511', adapter:'/', warranty:'สิ้นสุด', damage:'ขาพับจอเสีย'},
+      {type:'Notebook', serial:'5R76NJ3', brand:'Dell', series:'Inspiron 15 3511', adapter:'', warranty:'สิ้นสุด', damage:'ขาพับจอเสีย'},
+      {type:'Notebook', serial:'75QWXQ2', brand:'Dell', series:'Latitude 3490', adapter:'/', warranty:'สิ้นสุด', damage:'แบตเสื่อม'},
+      {type:'Notebook', serial:'41G2HG3', brand:'Dell', series:'Latitude 3420', adapter:'/', warranty:'สิ้นสุด', damage:'ช่องUSBเสีย2ช่อง'}
+    ];
+    const damageStorageKey = 'asset-dashboard.damageRows.v1';
+    const damageRows = restoreDamageRows();
+
+    function restoreDamageRows() {
+      try {
+        const savedRows = JSON.parse(localStorage.getItem(damageStorageKey) || 'null');
+        if (Array.isArray(savedRows) && savedRows.every(row => row && typeof row === 'object')) return savedRows;
+      } catch {}
+      return defaultDamageRows.map(row => ({...row}));
+    }
+
+    function persistDamageRows() {
+      try {
+        localStorage.setItem(damageStorageKey, JSON.stringify(damageRows));
+        return true;
+      } catch {
+        return false;
+      }
+    }
+
+    const views = {
+      overview: ['ภาพรวมทรัพย์สิน', 'สถานะอุปกรณ์และสต็อกทั้งหมดในที่เดียว'],
+      assets: ['อุปกรณ์ที่กำลังใช้งาน', 'รายการอุปกรณ์และผู้ใช้งาน'],
+      stock: ['สต็อกอุปกรณ์ IT', 'คอมพิวเตอร์และอุปกรณ์อื่นๆ พร้อมจ่าย'],
+      withdrawal: ['เบิกอุปกรณ์', 'บันทึกคำขอและปรับยอดคงเหลือในเบราว์เซอร์นี้'],
+      damage: ['รายการชำรุด', 'อุปกรณ์ที่ต้องตรวจสอบหรือส่งซ่อม']
+    };
+    const escapeHtml = value => String(value ?? '').replace(/[&<>"']/g, char => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));
+    const isComputerType = type => ['Notebook','PC','All-in-one'].includes(type);
+    const accessoryTypeKey = type => type === 'เมาส์' ? 'mouse' : type === 'คีย์บอร์ด' ? 'keyboard' : null;
+    const stockQuantity = row => Math.max(0, Number.isInteger(Number(row.quantity)) ? Number(row.quantity) : 1);
+    const stockUnits = rows => rows.reduce((total, row) => total + stockQuantity(row), 0);
+    const badge = type => `<span class="type-badge ${type === 'PC' ? 'pc' : type === 'All-in-one' ? 'all-in-one' : type === 'อุปกรณ์อื่นๆ' ? 'other' : ''}">${escapeHtml(type)}</span>`;
+    const setRows = (id, rows, cells) => { document.getElementById(id).innerHTML = rows.map((row, index) => `<tr>${cells(row, index).map(cell => `<td>${cell}</td>`).join('')}</tr>`).join(''); };
+
+    function renderAssets() {
+      setRows('assets-body', assetRows, (row, index) => {
+        const cells = [escapeHtml(row.user), escapeHtml(row.department), escapeHtml(row.location), `<strong>${escapeHtml(row.name)}</strong>`, badge(row.type), `<span>${escapeHtml(row.serial)}</span>`, escapeHtml(row.brand), [row.adapter && 'Adapter', row.mouse && 'Mouse', row.keyboard && 'Keyboard', row.monitor && 'Monitor'].filter(Boolean).map(escapeHtml).join(' · ') || '—'];
+        if (isAuthenticated) cells.push(`<div class="edit-actions"><button class="icon-button edit-row" type="button" data-index="${index}" aria-label="แก้ไข ${escapeHtml(row.serial)}" title="แก้ไข">✎</button><button class="icon-button danger delete-row" type="button" data-index="${index}" aria-label="ลบ ${escapeHtml(row.serial)}" title="ลบ">×</button></div>`);
+        return cells;
+      });
+      document.querySelectorAll('[data-editor-column]').forEach(column => { column.hidden = !isAuthenticated; });
+    }
+
+    function renderStock() {
+      setRows('stock-body', stockRows, (row, index) => {
+        const cells = [badge(row.type), row.serial ? `<strong>${escapeHtml(row.serial)}</strong>` : '—', escapeHtml(row.brand), escapeHtml(row.series), stockQuantity(row), row.adapter === '/' ? 'มี' : 'ไม่มี', row.warranty === 'สิ้นสุด' ? '<span class="status-badge">สิ้นสุด</span>' : escapeHtml(row.warranty)];
+        if (isAuthenticated) cells.push(`<div class="edit-actions"><button class="icon-button edit-stock-row" type="button" data-index="${index}" aria-label="แก้ไข ${escapeHtml(row.serial)}" title="แก้ไข">✎</button><button class="icon-button danger delete-stock-row" type="button" data-index="${index}" aria-label="ลบ ${escapeHtml(row.serial)}" title="ลบ">×</button></div>`);
+        return cells;
+      });
+      document.querySelectorAll('[data-stock-editor-column]').forEach(column => { column.hidden = !isAuthenticated; });
+    }
+
+    function renderAccessoryStock() {
+      const rows = [['mouse','เมาส์',accessoryStock.mouse],['keyboard','คีย์บอร์ด',accessoryStock.keyboard]];
+      document.getElementById('accessory-stock-body').innerHTML = rows.map(([item,label,quantity]) => `<tr><td><strong>${label}</strong></td><td>${quantity} ชิ้น</td>${isAuthenticated ? `<td><div class="edit-actions"><button class="quiet-button add-accessory-stock-row" type="button" data-item="${item}">＋ รับเข้า</button><button class="icon-button danger reduce-accessory-stock-row" type="button" data-item="${item}" aria-label="ลดจำนวน${label}" title="ลดจำนวน">−</button></div></td>` : ''}</tr>`).join('');
+      document.querySelectorAll('[data-accessory-editor-column]').forEach(column => { column.hidden = !isAuthenticated; });
+      document.getElementById('add-accessory-stock-button').hidden = !isAuthenticated;
+    }
+    renderStock();
+    renderAccessoryStock();
+    function renderDamage() {
+      setRows('damage-body', damageRows, (row, index) => {
+        const cells = [badge(row.type), `<strong>${escapeHtml(row.serial)}</strong>`, escapeHtml(row.brand), escapeHtml(row.series), row.adapter === '/' ? 'มี' : 'ไม่มี', row.warranty === 'สิ้นสุด' ? '<span class="status-badge">สิ้นสุด</span>' : escapeHtml(row.warranty), escapeHtml(row.damage)];
+        if (isAuthenticated) cells.push(`<div class="edit-actions"><button class="icon-button edit-damage-row" type="button" data-index="${index}" aria-label="แก้ไข ${escapeHtml(row.serial)}" title="แก้ไข">✎</button><button class="icon-button danger delete-damage-row" type="button" data-index="${index}" aria-label="ลบ ${escapeHtml(row.serial)}" title="ลบ">×</button></div>`);
+        return cells;
+      });
+      document.querySelectorAll('[data-damage-editor-column]').forEach(column => { column.hidden = !isAuthenticated; });
+    }
+    renderDamage();
+
+    const dataSets = {assets: assetRows, stock: stockRows, damage: damageRows};
+    const rowText = row => Object.values(row).join(' ').toLocaleLowerCase('th');
+    const excelHandleDatabase = 'asset-dashboard-file-handles';
+    const targetExcelFilename = 'Asset-Inventory-2026-10-01T03-45-34.xlsx';
+    let linkedExcelHandle = null;
+    let excelSaveQueue = Promise.resolve();
+
+    function setExcelStatus(message, state = 'disconnected') {
+      const status = document.getElementById('excel-status');
+      status.textContent = message;
+      status.dataset.state = state;
+    }
+
+    function openExcelHandleDatabase() {
+      return new Promise((resolve, reject) => {
+        const request = indexedDB.open(excelHandleDatabase, 1);
+        request.onupgradeneeded = () => request.result.createObjectStore('files');
+        request.onsuccess = () => resolve(request.result);
+        request.onerror = () => reject(request.error);
+      });
+    }
+
+    async function storeLinkedExcelHandle(handle) {
+      const database = await openExcelHandleDatabase();
+      await new Promise((resolve, reject) => {
+        const transaction = database.transaction('files', 'readwrite');
+        transaction.objectStore('files').put(handle, 'workbook');
+        transaction.oncomplete = resolve;
+        transaction.onerror = () => reject(transaction.error);
+      });
+      database.close();
+    }
+
+    async function restoreLinkedExcelHandle() {
+      try {
+        const database = await openExcelHandleDatabase();
+        const handle = await new Promise((resolve, reject) => {
+          const transaction = database.transaction('files', 'readonly');
+          const request = transaction.objectStore('files').get('workbook');
+          request.onsuccess = () => resolve(request.result || null);
+          request.onerror = () => reject(request.error);
+        });
+        database.close();
+        if (!handle) return;
+        if (handle.name !== targetExcelFilename) {
+          setExcelStatus(`เลือกไฟล์ ${targetExcelFilename} เพื่อเริ่มบันทึกอัตโนมัติ`, 'error');
+          return;
+        }
+        linkedExcelHandle = handle;
+        const permission = await handle.queryPermission({mode: 'readwrite'});
+        if (permission === 'granted') setExcelStatus(`บันทึกอัตโนมัติไปที่ ${handle.name}`, 'connected');
+        else setExcelStatus(`พบไฟล์ ${handle.name} · กด “เชื่อมไฟล์ Excel” เพื่ออนุญาตอีกครั้ง`);
+      } catch {
+        setExcelStatus('ยังไม่ได้เลือกไฟล์ Excel · ระบบจะดาวน์โหลดไฟล์เมื่อมีการบันทึก');
+      }
+    }
+
+    function createExcelWorkbook() {
+      const workbook = XLSX.utils.book_new();
+      const worksheets = [
+        ['Asset', [
+          ['User Name','Depart','Location','Computer Name','Type','Serial No.','Brand','Adepter','Mouse','Keyboard','Monitor'],
+          ...assetRows.map(row => [row.user,row.department,row.location,row.name,row.type,row.serial,row.brand,row.adapter,row.mouse,row.keyboard,row.monitor])
+        ]],
+        ['Stock IT', [
+          ['Type','Serial No.','Brand','Series','Quantity','Adapter','Warranty'],
+          ...stockRows.map(row => [row.type,row.serial,row.brand,row.series,stockQuantity(row),row.adapter,row.warranty])
+        ]],
+        ['Mouse,Key', [['อุปกรณ์','คงเหลือ'],['Mouse',accessoryStock.mouse],['Keyboard',accessoryStock.keyboard]]],
+        ['Damage', [
+          ['Type','Serial No.','Brand','Series','Adepter','Warranty','Damage'],
+          ...damageRows.map(row => [row.type,row.serial,row.brand,row.series,row.adapter,row.warranty,row.damage])
+        ]],
+        ['Withdrawal', [
+          ['วันที่','ผู้เบิก','แผนก','สถานที่รับ','อุปกรณ์','Serial No.','จำนวน','หมายเหตุ'],
+          ...withdrawalRows.map(row => [row.date,row.requester,row.department,row.location || '',row.item,row.serial,row.quantity,row.note || ''])
+        ]],
+        ['Summary', [
+          ['รายการ','จำนวน'],
+          ['อุปกรณ์กำลังใช้งาน',assetRows.length],
+          ['Notebook ในสต็อก',stockUnits(stockRows.filter(row => row.type === 'Notebook'))],
+          ['PC ในสต็อก',stockUnits(stockRows.filter(row => row.type === 'PC'))],
+          ['All-in-one ในสต็อก',stockUnits(stockRows.filter(row => row.type === 'All-in-one'))],
+          ['อุปกรณ์อื่นๆ ในสต็อก',stockUnits(stockRows.filter(row => !isComputerType(row.type)))],
+          ['เมาส์คงเหลือ',accessoryStock.mouse],
+          ['คีย์บอร์ดคงเหลือ',accessoryStock.keyboard],
+          ['รายการเบิกทั้งหมด',withdrawalRows.length],
+          ['ส่งออกเมื่อ',new Date().toLocaleString('th-TH')]
+        ]]
+      ];
+      for (const [name, rows] of worksheets) {
+        XLSX.utils.book_append_sheet(workbook, XLSX.utils.aoa_to_sheet(rows), name);
+      }
+      return workbook;
+    }
+
+    function downloadExcelFile(blob) {
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+      link.href = url;
+      link.download = `Asset-Inventory-${timestamp}.xlsx`;
+      link.click();
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+    }
+
+    async function exportExcelWorkbook(forceDownload = false) {
+      if (typeof XLSX === 'undefined') {
+        setExcelStatus('ไม่พบไลบรารี Excel ในโฟลเดอร์ vendor', 'error');
+        return false;
+      }
+      if (!forceDownload && !linkedExcelHandle) {
+        setExcelStatus(`ยังไม่ได้เชื่อม ${targetExcelFilename} · กด “เชื่อมไฟล์ Excel” ก่อนแก้ไขข้อมูล`, 'error');
+        return false;
+      }
+      let blob;
+      try {
+        const workbook = createExcelWorkbook();
+        const contents = XLSX.write(workbook, {bookType: 'xlsx', type: 'array', compression: true});
+        blob = new Blob([contents], {type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
+        if (!forceDownload && linkedExcelHandle) {
+          const permission = await linkedExcelHandle.queryPermission({mode: 'readwrite'});
+          if (permission === 'granted') {
+            const writable = await linkedExcelHandle.createWritable();
+            await writable.write(blob);
+            await writable.close();
+            setExcelStatus(`บันทึก Excel ล่าสุดแล้ว · ${linkedExcelHandle.name}`, 'connected');
+            return true;
+          }
+        }
+        downloadExcelFile(blob);
+        if (forceDownload) setExcelStatus('ส่งออกไฟล์ Excel แล้ว · ตรวจสอบโฟลเดอร์ดาวน์โหลด', 'connected');
+        else if (linkedExcelHandle) setExcelStatus(`ต้องอนุญาตไฟล์ ${linkedExcelHandle.name} อีกครั้ง`, 'error');
+        else setExcelStatus(`ยังไม่ได้เชื่อม ${targetExcelFilename} · กด “เชื่อมไฟล์ Excel” เพื่อเปิดบันทึกอัตโนมัติ`, 'disconnected');
+        return true;
+      } catch (error) {
+        setExcelStatus(`ส่งออก Excel ไม่สำเร็จ: ${error.message}`, 'error');
+        return false;
+      }
+    }
+
+    function queueExcelAutoSave() {
+      if (!linkedExcelHandle) {
+        setExcelStatus(`ยังไม่ได้เชื่อม ${targetExcelFilename} · ไม่มีการเขียนไฟล์`, 'error');
+        return;
+      }
+      excelSaveQueue = excelSaveQueue.then(() => exportExcelWorkbook()).catch(error => {
+        setExcelStatus(`บันทึก Excel ไม่สำเร็จ: ${error.message}`, 'error');
+      });
+    }
+
+    async function connectExcelFile() {
+      if (typeof window.showOpenFilePicker !== 'function') {
+        setExcelStatus('เบราว์เซอร์ไม่รองรับการเชื่อมไฟล์ · ใช้ปุ่มส่งออก Excel แทน', 'error');
+        return;
+      }
+      try {
+        const [selectedHandle] = await window.showOpenFilePicker({
+          multiple: false,
+          types: [{description: 'Excel Workbook', accept: {'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': ['.xlsx']}}]
+        });
+        if (selectedHandle.name !== targetExcelFilename) {
+          setExcelStatus(`เลือกไฟล์ ${targetExcelFilename} เท่านั้น`, 'error');
+          return;
+        }
+        const permission = await selectedHandle.requestPermission({mode: 'readwrite'});
+        if (permission !== 'granted') {
+          setExcelStatus(`ไม่ได้รับสิทธิ์เขียนไฟล์ ${targetExcelFilename}`, 'error');
+          return;
+        }
+        linkedExcelHandle = selectedHandle;
+        await storeLinkedExcelHandle(linkedExcelHandle);
+        setExcelStatus(`กำลังบันทึกไฟล์ ${linkedExcelHandle.name}`, 'connected');
+        await excelSaveQueue;
+        await exportExcelWorkbook();
+      } catch (error) {
+        if (error.name !== 'AbortError') setExcelStatus(`เชื่อมไฟล์ Excel ไม่สำเร็จ: ${error.message}`, 'error');
+      }
+    }
+
+    async function initializeExcelFileLink() {
+      await restoreLinkedExcelHandle();
+    }
+
+    function updateOverview() {
+      const total = assetRows.length;
+      const notebookCount = assetRows.filter(row => row.type === 'Notebook').length;
+      const pcCount = assetRows.filter(row => row.type === 'PC').length;
+      const allInOneCount = assetRows.filter(row => row.type === 'All-in-one').length;
+      const stockNotebookCount = stockUnits(stockRows.filter(row => row.type === 'Notebook'));
+      const stockPcCount = stockUnits(stockRows.filter(row => row.type === 'PC'));
+      const stockAllInOneCount = stockUnits(stockRows.filter(row => row.type === 'All-in-one'));
+      const stockOtherCount = stockUnits(stockRows.filter(row => !isComputerType(row.type)));
+      const stockTotal = stockUnits(stockRows);
+      const circumference = 2 * Math.PI * 57;
+      const notebookArc = total ? circumference * notebookCount / total : 0;
+      const pcArc = total ? circumference * pcCount / total : 0;
+      const allInOneArc = total ? circumference * allInOneCount / total : 0;
+      document.getElementById('active-total').textContent = total;
+      document.getElementById('donut-total').textContent = total;
+      document.getElementById('notebook-total').textContent = notebookCount;
+      document.getElementById('pc-total').textContent = pcCount;
+      document.getElementById('all-in-one-total').textContent = allInOneCount;
+      document.getElementById('stock-total').textContent = stockTotal;
+      document.getElementById('asset-donut').setAttribute('aria-label', `Notebook ${notebookCount} เครื่อง, PC ${pcCount} เครื่อง, All-in-one ${allInOneCount} เครื่อง`);
+      document.getElementById('donut-notebook').setAttribute('stroke-dasharray', `${notebookArc} ${circumference}`);
+      document.getElementById('donut-pc').setAttribute('stroke-dasharray', `${pcArc} ${circumference}`);
+      document.getElementById('donut-pc').setAttribute('stroke-dashoffset', `${-notebookArc}`);
+      document.getElementById('donut-all-in-one').setAttribute('stroke-dasharray', `${allInOneArc} ${circumference}`);
+      document.getElementById('donut-all-in-one').setAttribute('stroke-dashoffset', `${-(notebookArc + pcArc)}`);
+      document.getElementById('stock-notebook-total').textContent = stockNotebookCount;
+      document.getElementById('stock-pc-total').textContent = stockPcCount;
+      document.getElementById('stock-all-in-one-total').textContent = stockAllInOneCount;
+      document.getElementById('stock-other-total').textContent = stockOtherCount;
+      document.getElementById('stock-notebook-bar').style.setProperty('--width', `${stockTotal ? stockNotebookCount / stockTotal * 100 : 0}%`);
+      document.getElementById('stock-pc-bar').style.setProperty('--width', `${stockTotal ? stockPcCount / stockTotal * 100 : 0}%`);
+      document.getElementById('stock-all-in-one-bar').style.setProperty('--width', `${stockTotal ? stockAllInOneCount / stockTotal * 100 : 0}%`);
+      document.getElementById('stock-other-bar').style.setProperty('--width', `${stockTotal ? stockOtherCount / stockTotal * 100 : 0}%`);
+      document.getElementById('stock-chart-note').textContent = `คอมพิวเตอร์และอุปกรณ์อื่นๆ · รวม ${stockTotal} ชิ้น`;
+      document.getElementById('mouse-total').textContent = accessoryStock.mouse;
+      document.getElementById('keyboard-total').textContent = accessoryStock.keyboard;
+      document.getElementById('mouse-stock-total').textContent = accessoryStock.mouse;
+      document.getElementById('keyboard-stock-total').textContent = accessoryStock.keyboard;
+    }
+
+    function renderWithdrawalOptions(selectedValue = '') {
+      const select = document.getElementById('withdrawal-item');
+      const computerOptions = stockRows.map((row, index) => ({row,index})).filter(({row}) => isComputerType(row.type)).map(({row,index}) => `<option value="computer:${index}">${escapeHtml(row.type)} · ${escapeHtml(row.serial)} · ${escapeHtml(row.brand)} ${escapeHtml(row.series)}</option>`).join('');
+      const otherEquipmentOptions = stockRows.map((row, index) => ({row,index})).filter(({row}) => !isComputerType(row.type) && stockQuantity(row) > 0).map(({row,index}) => `<option value="stock:${index}">${escapeHtml(row.type)} · ${escapeHtml(row.brand)} ${escapeHtml(row.series)} · คงเหลือ ${stockQuantity(row)} ชิ้น</option>`).join('');
+      const accessoryOptions = [
+        `<option value="accessory:mouse" ${accessoryStock.mouse === 0 ? 'disabled' : ''}>เมาส์ · คงเหลือ ${accessoryStock.mouse} ชิ้น</option>`,
+        `<option value="accessory:keyboard" ${accessoryStock.keyboard === 0 ? 'disabled' : ''}>คีย์บอร์ด · คงเหลือ ${accessoryStock.keyboard} ชิ้น</option>`
+      ].join('');
+      select.innerHTML = `${computerOptions ? `<optgroup label="คอมพิวเตอร์ · เบิกได้ครั้งละ 1 เครื่อง">${computerOptions}</optgroup>` : ''}${otherEquipmentOptions ? `<optgroup label="อุปกรณ์อื่นๆ">${otherEquipmentOptions}</optgroup>` : ''}<optgroup label="อุปกรณ์เสริม">${accessoryOptions}</optgroup>`;
+      if ([...select.options].some(option => option.value === selectedValue && !option.disabled)) select.value = selectedValue;
+      updateWithdrawalAvailability();
+    }
+
+    function updateWithdrawalAvailability() {
+      const selection = document.getElementById('withdrawal-item').value;
+      const quantity = document.getElementById('withdrawal-quantity');
+      const hint = document.getElementById('withdrawal-availability');
+      const [kind, value] = selection.split(':');
+      if (kind === 'computer') {
+        const computer = stockRows[Number(value)];
+        quantity.value = 1;
+        quantity.max = 1;
+        quantity.disabled = true;
+        hint.textContent = computer ? `${computer.type} Serial No. ${computer.serial} จะย้ายไปยังหน้ากำลังใช้งานเมื่อบันทึกการเบิก` : 'กรุณาเลือกรายการอุปกรณ์';
+      } else if (kind === 'stock') {
+        const item = stockRows[Number(value)];
+        const available = item ? stockQuantity(item) : 0;
+        quantity.disabled = false;
+        quantity.max = String(available);
+        if (Number(quantity.value) > available) quantity.value = available || 1;
+        hint.textContent = item ? `คงเหลือ ${available} ชิ้น · ระบบจะตัดยอดหลังบันทึกคำขอ` : 'กรุณาเลือกรายการอุปกรณ์';
+      } else {
+        const available = value === 'mouse' ? accessoryStock.mouse : accessoryStock.keyboard;
+        quantity.disabled = false;
+        quantity.max = String(available);
+        if (Number(quantity.value) > available) quantity.value = available || 1;
+        hint.textContent = `คงเหลือ ${available} ชิ้น · ระบบจะหักยอดหลังบันทึกคำขอ`;
+      }
+    }
+
+    function renderWithdrawalHistory() {
+      const body = document.getElementById('withdrawal-history-body');
+      const rows = [...withdrawalRows].reverse();
+      body.innerHTML = rows.map(row => `<tr><td>${escapeHtml(row.date)}</td><td>${escapeHtml(row.requester)}<br><span class="panel-note">${escapeHtml(row.department)}</span></td><td>${escapeHtml(row.item)}${row.serial ? `<br><span class="panel-note">${escapeHtml(row.serial)}</span>` : ''}</td><td>${escapeHtml(row.quantity)}</td><td><span class="history-status">บันทึกแล้ว</span></td></tr>`).join('');
+      document.getElementById('withdrawal-count').textContent = `${rows.length} รายการ`;
+      document.getElementById('withdrawal-empty').style.display = rows.length ? 'none' : 'block';
+    }
+
+    function setLocalToday() {
+      const now = new Date();
+      const localDate = new Date(now.getTime() - now.getTimezoneOffset() * 60000).toISOString().slice(0, 10);
+      document.querySelector('#withdrawal-form [name="date"]').value = localDate;
+    }
+
+    function submitWithdrawal(event) {
+      event.preventDefault();
+      const form = event.currentTarget;
+      const formData = new FormData(form);
+      const requester = String(formData.get('requester') || '').trim();
+      const department = String(formData.get('department') || '').trim();
+      const selection = String(formData.get('item') || '');
+      const quantity = Number(document.getElementById('withdrawal-quantity').value);
+      const [kind, value] = selection.split(':');
+      const error = document.getElementById('withdrawal-error');
+      error.textContent = '';
+
+      if (!requester || !department || !formData.get('date')) {
+        error.textContent = 'กรุณากรอกชื่อผู้เบิก แผนก และวันที่ให้ครบ';
+        return;
+      }
+      if (kind === 'computer') {
+        const stockIndex = Number(value);
+        const computer = stockRows[stockIndex];
+        if (!computer) {
+          error.textContent = 'อุปกรณ์นี้ถูกเบิกหรือเอาออกจากสต็อกแล้ว กรุณาเลือกรายการใหม่';
+          renderWithdrawalOptions();
+          return;
+        }
+        if (assetRows.some(row => row.serial.toLocaleUpperCase() === computer.serial.toLocaleUpperCase())) {
+          error.textContent = 'Serial No. นี้มีอยู่ในรายการกำลังใช้งานแล้ว';
+          return;
+        }
+        const [removedComputer] = stockRows.splice(stockIndex, 1);
+        const assignedComputer = {
+          user: requester,
+          department,
+          location: String(formData.get('location') || '').trim(),
+          name: computer.series,
+          type: computer.type,
+          serial: computer.serial,
+          brand: computer.brand,
+          adapter: computer.adapter || '',
+          mouse: '',
+          keyboard: '',
+          monitor: ''
+        };
+        assetRows.push(assignedComputer);
+        const withdrawal = {date: String(formData.get('date')), requester, department, location: String(formData.get('location') || '').trim(), item: `${computer.type} · ${computer.brand} ${computer.series}`, serial: computer.serial, quantity: 1, note: String(formData.get('note') || '').trim()};
+        withdrawalRows.push(withdrawal);
+        const saved = persistStockRows() && persistAssetRows() && persistWithdrawals();
+        if (!saved) {
+          withdrawalRows.pop();
+          assetRows.pop();
+          stockRows.splice(stockIndex, 0, removedComputer);
+          persistStockRows();
+          persistAssetRows();
+          persistWithdrawals();
+          error.textContent = 'บันทึกข้อมูลไม่ได้ กรุณาอนุญาตให้เบราว์เซอร์ใช้พื้นที่จัดเก็บ';
+          return;
+        }
+      } else if (kind === 'stock') {
+        const stockIndex = Number(value);
+        const item = stockRows[stockIndex];
+        const available = item ? stockQuantity(item) : 0;
+        if (!item || !Number.isInteger(quantity) || quantity < 1 || quantity > available) {
+          error.textContent = `จำนวนต้องอยู่ระหว่าง 1 ถึง ${available} ชิ้น`;
+          renderWithdrawalOptions();
+          return;
+        }
+        const previousQuantity = available;
+        const itemLabel = `${item.type} · ${item.brand} ${item.series}`;
+        item.quantity = available - quantity;
+        if (item.quantity === 0) stockRows.splice(stockIndex, 1);
+        withdrawalRows.push({date: String(formData.get('date')), requester, department, location: String(formData.get('location') || '').trim(), item: itemLabel, serial: item.serial || '', quantity, note: String(formData.get('note') || '').trim()});
+        if (!persistStockRows() || !persistWithdrawals()) {
+          withdrawalRows.pop();
+          if (item.quantity === 0) stockRows.splice(stockIndex, 0, item);
+          item.quantity = previousQuantity;
+          persistStockRows();
+          persistWithdrawals();
+          error.textContent = 'บันทึกข้อมูลไม่ได้ กรุณาอนุญาตให้เบราว์เซอร์ใช้พื้นที่จัดเก็บ';
+          return;
+        }
+      } else if (kind === 'accessory' && (value === 'mouse' || value === 'keyboard')) {
+        const available = accessoryStock[value];
+        if (!Number.isInteger(quantity) || quantity < 1 || quantity > available) {
+          error.textContent = `จำนวนต้องอยู่ระหว่าง 1 ถึง ${available} ชิ้น`;
+          return;
+        }
+        const itemLabel = value === 'mouse' ? 'เมาส์' : 'คีย์บอร์ด';
+        accessoryStock[value] -= quantity;
+        withdrawalRows.push({date: String(formData.get('date')), requester, department, location: String(formData.get('location') || '').trim(), item: itemLabel, serial: '', quantity, note: String(formData.get('note') || '').trim()});
+        if (!persistAccessoryStock() || !persistWithdrawals()) {
+          accessoryStock[value] += quantity;
+          withdrawalRows.pop();
+          persistAccessoryStock();
+          persistWithdrawals();
+          error.textContent = 'บันทึกข้อมูลไม่ได้ กรุณาอนุญาตให้เบราว์เซอร์ใช้พื้นที่จัดเก็บ';
+          return;
+        }
+      } else {
+        error.textContent = 'กรุณาเลือกรายการอุปกรณ์ที่มีในสต็อก';
+        return;
+      }
+
+      renderStock();
+      renderAssets();
+      updateOverview();
+      renderWithdrawalHistory();
+      renderWithdrawalOptions();
+      form.reset();
+      setLocalToday();
+      error.textContent = '';
+      queueExcelAutoSave();
+      window.alert('บันทึกการเบิกเรียบร้อยแล้ว');
+    }
+
+    function updateLoginState() {
+      const loginButton = document.getElementById('login-button');
+      document.getElementById('login-label').textContent = isAuthenticated ? 'ออกจากระบบ' : 'เข้าสู่ระบบ';
+      loginButton.setAttribute('aria-label', isAuthenticated ? 'ออกจากระบบผู้ดูแล' : 'เข้าสู่ระบบผู้ดูแล');
+      document.getElementById('add-asset-button').hidden = !isAuthenticated;
+      document.getElementById('add-stock-button').hidden = !isAuthenticated;
+      document.getElementById('add-damage-button').hidden = !isAuthenticated;
+      renderAssets();
+      renderStock();
+      renderAccessoryStock();
+      renderDamage();
+      if (document.getElementById('view-assets').classList.contains('active')) filterTable('assets');
+      if (document.getElementById('view-stock').classList.contains('active')) filterTable('stock');
+      if (document.getElementById('view-damage').classList.contains('active')) filterTable('damage');
+    }
+
+    function openAssetEditor(index = -1) {
+      const form = document.getElementById('asset-form');
+      const row = index >= 0 ? assetRows[index] : {};
+      editingIndex = index;
+      form.reset();
+      form.elements.namedItem('recordIndex').value = index;
+      for (const field of ['user','department','location','name','type','serial','brand','adapter','mouse','keyboard','monitor']) {
+        if (row[field] !== undefined) form.elements.namedItem(field).value = row[field];
+      }
+      document.getElementById('asset-dialog-title').textContent = index >= 0 ? 'แก้ไขทรัพย์สิน' : 'เพิ่มทรัพย์สิน';
+      document.getElementById('asset-error').textContent = '';
+      document.getElementById('asset-dialog').showModal();
+    }
+
+    function saveAsset(event) {
+      event.preventDefault();
+      const form = event.currentTarget;
+      const formData = new FormData(form);
+      const record = Object.fromEntries(['user','department','location','name','type','serial','brand','adapter','mouse','keyboard','monitor'].map(key => [key, String(formData.get(key) || '').trim()]));
+      const index = Number(formData.get('recordIndex'));
+      const serial = record.serial.toLocaleUpperCase();
+      const duplicate = assetRows.some((row, rowIndex) => rowIndex !== index && row.serial.toLocaleUpperCase() === serial);
+      const error = document.getElementById('asset-error');
+      if (duplicate) {
+        error.textContent = 'Serial No. นี้มีอยู่ในทะเบียนแล้ว';
+        return;
+      }
+      const previous = index >= 0 ? assetRows[index] : null;
+      if (index >= 0) assetRows[index] = record;
+      else assetRows.push(record);
+      if (!persistAssetRows()) {
+        if (index >= 0) assetRows[index] = previous;
+        else assetRows.pop();
+        error.textContent = 'บันทึกในเบราว์เซอร์ไม่ได้ กรุณาอนุญาตให้เว็บไซต์ใช้พื้นที่จัดเก็บ';
+        return;
+      }
+      queueExcelAutoSave();
+      renderAssets();
+      updateOverview();
+      filterTable('assets');
+      document.getElementById('asset-dialog').close();
+    }
+
+    function removeAsset(index) {
+      const removed = assetRows.splice(index, 1)[0];
+      if (!persistAssetRows()) {
+        assetRows.splice(index, 0, removed);
+        window.alert('บันทึกการลบในเบราว์เซอร์ไม่ได้');
+        return;
+      }
+      queueExcelAutoSave();
+      renderAssets();
+      updateOverview();
+      filterTable('assets');
+    }
+
+    function openStockEditor(index = -1) {
+      const form = document.getElementById('stock-form');
+      const row = index >= 0 ? stockRows[index] : {};
+      form.reset();
+      form.elements.namedItem('recordIndex').value = index;
+      for (const field of ['type','serial','brand','series','adapter','warranty']) {
+        if (row[field] !== undefined) form.elements.namedItem(field).value = row[field];
+      }
+      form.elements.namedItem('quantity').value = stockQuantity(row);
+      updateStockFormFields();
+      document.getElementById('stock-error').textContent = '';
+      document.getElementById('stock-dialog').showModal();
+    }
+    
+    function updateStockFormFields() {
+      const type = document.getElementById('stock-type').value;
+      const isAccessory = Boolean(accessoryTypeKey(type));
+      const otherEquipment = !isComputerType(type);
+      const form = document.getElementById('stock-form');
+      const recordIndex = Number(form.elements.namedItem('recordIndex').value);
+      document.getElementById('stock-serial').required = !otherEquipment;
+      document.getElementById('stock-quantity-field').hidden = !otherEquipment;
+      document.getElementById('stock-quantity').disabled = !otherEquipment;
+      document.getElementById('stock-adapter-field').hidden = isAccessory;
+      document.querySelector('#stock-form [name="adapter"]').disabled = isAccessory;
+      form.elements.namedItem('brand').required = !isAccessory;
+      form.elements.namedItem('series').required = !isAccessory;
+      form.querySelector('[name="brand"]').closest('.field').hidden = isAccessory;
+      form.querySelector('[name="series"]').closest('.field').hidden = isAccessory;
+      form.querySelector('[name="warranty"]').closest('.field').hidden = isAccessory;
+      document.getElementById('stock-serial-field').hidden = otherEquipment;
+      document.getElementById('stock-quantity-field').firstChild.textContent = isAccessory ? 'จำนวนที่รับเข้า' : 'จำนวนคงเหลือ';
+      const action = recordIndex >= 0 ? 'แก้ไข' : 'เพิ่ม';
+      const itemName = isAccessory ? type : otherEquipment ? 'อุปกรณ์อื่นๆ' : 'คอมพิวเตอร์';
+      document.getElementById('stock-dialog-title').textContent = isAccessory ? `${action}${itemName}เข้าสต็อก` : `${action}${itemName}ในสต็อก`;
+    }
+
+    function saveStock(event) {
+      event.preventDefault();
+      if (!isAuthenticated) return;
+      const formData = new FormData(event.currentTarget);
+      const type = String(formData.get('type') || '').trim();
+      const record = Object.fromEntries(['serial','brand','series','adapter','warranty'].map(key => [key, String(formData.get(key) || '').trim()]));
+      record.type = type;
+      record.quantity = isComputerType(type) ? 1 : Number(formData.get('quantity'));
+      const index = Number(formData.get('recordIndex'));
+      const accessoryKey = accessoryTypeKey(type);
+      const error = document.getElementById('stock-error');
+      if (accessoryKey) {
+        if (index >= 0) {
+          error.textContent = 'เพิ่มเมาส์หรือคีย์บอร์ดผ่านรายการใหม่เท่านั้น';
+          return;
+        }
+        if (!Number.isInteger(record.quantity) || record.quantity < 1) {
+          error.textContent = 'จำนวนที่รับเข้าต้องเป็นจำนวนเต็มอย่างน้อย 1 ชิ้น';
+          return;
+        }
+        const previous = accessoryStock[accessoryKey];
+        accessoryStock[accessoryKey] += record.quantity;
+        if (!persistAccessoryStock()) {
+          accessoryStock[accessoryKey] = previous;
+          error.textContent = 'บันทึกไม่ได้ กรุณาอนุญาตให้เบราว์เซอร์ใช้พื้นที่จัดเก็บ';
+          return;
+        }
+        updateOverview();
+        renderAccessoryStock();
+        renderWithdrawalOptions();
+        queueExcelAutoSave();
+        document.getElementById('stock-dialog').close();
+        return;
+      }
+      const serial = record.serial.toLocaleUpperCase();
+      const duplicate = Boolean(serial) && stockRows.some((row, rowIndex) => rowIndex !== index && row.serial && row.serial.toLocaleUpperCase() === serial);
+      if (!Number.isInteger(record.quantity) || record.quantity < 1) {
+        error.textContent = 'จำนวนคงเหลือต้องเป็นจำนวนเต็มอย่างน้อย 1 ชิ้น';
+        return;
+      }
+        document.getElementById('stock-dialog-title').textContent = index >= 0 ? 'แก้ไขรายการในสต็อก' : 'เพิ่มรายการในสต็อก';
+      if (duplicate) {
+        error.textContent = 'Serial No. นี้มีอยู่ในสต็อกแล้ว';
+        return;
+      }
+      const previous = index >= 0 ? stockRows[index] : null;
+      if (index >= 0) stockRows[index] = record;
+      else stockRows.push(record);
+      if (!persistStockRows()) {
+        if (index >= 0) stockRows[index] = previous;
+        else stockRows.pop();
+        error.textContent = 'บันทึกในเบราว์เซอร์ไม่ได้ กรุณาอนุญาตให้เว็บไซต์ใช้พื้นที่จัดเก็บ';
+        return;
+      }
+      queueExcelAutoSave();
+      renderStock();
+      updateOverview();
+      filterTable('stock');
+      document.getElementById('stock-dialog').close();
+    }
+
+    function removeStock(index) {
+      const removed = stockRows.splice(index, 1)[0];
+      if (!persistStockRows()) {
+        stockRows.splice(index, 0, removed);
+        window.alert('บันทึกการลบในเบราว์เซอร์ไม่ได้');
+        return;
+      }
+      queueExcelAutoSave();
+      renderStock();
+      updateOverview();
+      filterTable('stock');
+    }
+
+    function openDamageEditor(index = -1) {
+      const form = document.getElementById('damage-form');
+      const row = index >= 0 ? damageRows[index] : {};
+      form.reset();
+      form.elements.namedItem('recordIndex').value = index;
+      for (const field of ['type','serial','brand','series','adapter','warranty','damage']) {
+        if (row[field] !== undefined) form.elements.namedItem(field).value = row[field];
+      }
+      document.getElementById('damage-dialog-title').textContent = index >= 0 ? 'แก้ไขรายการชำรุด' : 'เพิ่มรายการชำรุด';
+      document.getElementById('damage-error').textContent = '';
+      document.getElementById('damage-dialog').showModal();
+    }
+
+    function saveDamage(event) {
+      event.preventDefault();
+      if (!isAuthenticated) return;
+      const formData = new FormData(event.currentTarget);
+      const record = Object.fromEntries(['type','serial','brand','series','adapter','warranty','damage'].map(key => [key, String(formData.get(key) || '').trim()]));
+      const index = Number(formData.get('recordIndex'));
+      const serial = record.serial.toLocaleUpperCase();
+      const duplicate = damageRows.some((row, rowIndex) => rowIndex !== index && row.serial.toLocaleUpperCase() === serial);
+      const error = document.getElementById('damage-error');
+      if (duplicate) {
+        error.textContent = 'Serial No. นี้มีอยู่ในรายการชำรุดแล้ว';
+        return;
+      }
+      const previous = index >= 0 ? damageRows[index] : null;
+      if (index >= 0) damageRows[index] = record;
+      else damageRows.push(record);
+      if (!persistDamageRows()) {
+        if (index >= 0) damageRows[index] = previous;
+        else damageRows.pop();
+        error.textContent = 'บันทึกไม่ได้ กรุณาอนุญาตให้เบราว์เซอร์ใช้พื้นที่จัดเก็บ';
+        return;
+      }
+      queueExcelAutoSave();
+      renderDamage();
+      filterTable('damage');
+      document.getElementById('damage-dialog').close();
+    }
+
+    function removeDamage(index) {
+      const removed = damageRows.splice(index, 1)[0];
+      if (!persistDamageRows()) {
+        damageRows.splice(index, 0, removed);
+        window.alert('บันทึกรายการชำรุดไม่ได้');
+        return;
+      }
+      queueExcelAutoSave();
+      renderDamage();
+      filterTable('damage');
+    }
+
+    function openAccessoryStockDialog(item = 'mouse', action = 'receive') {
+      if (!isAuthenticated) return;
+      accessoryStockAction = action;
+      const form = document.getElementById('accessory-stock-form');
+      form.reset();
+      form.elements.namedItem('item').value = item;
+      const label = item === 'mouse' ? 'เมาส์' : 'คีย์บอร์ด';
+      const available = accessoryStock[item];
+      document.getElementById('accessory-stock-title').textContent = action === 'reduce' ? `ลดจำนวน${label}` : `รับเข้า${label}`;
+      document.getElementById('accessory-stock-description').textContent = action === 'reduce' ? `คงเหลือ ${available} ชิ้น · ระบุจำนวนที่ต้องการตัดออก` : 'จำนวนที่รับเข้าจะเพิ่มในยอดคงเหลือและไฟล์ Excel';
+      document.getElementById('accessory-stock-quantity-label').textContent = action === 'reduce' ? `จำนวนที่ลด (คงเหลือ ${available})` : 'จำนวนที่รับเข้า';
+      document.getElementById('accessory-stock-submit').textContent = action === 'reduce' ? 'บันทึกลดจำนวน' : 'บันทึกรับเข้า';
+      form.elements.namedItem('quantity').max = action === 'reduce' ? String(available) : '';
+      document.getElementById('accessory-stock-error').textContent = '';
+      document.getElementById('accessory-stock-dialog').showModal();
+    }
+
+    function receiveAccessoryStock(event) {
+      event.preventDefault();
+      if (!isAuthenticated) return;
+      const form = event.currentTarget;
+      const item = String(form.elements.namedItem('item').value);
+      const quantity = Number(form.elements.namedItem('quantity').value);
+      const error = document.getElementById('accessory-stock-error');
+      if (!['mouse','keyboard'].includes(item) || !Number.isInteger(quantity) || quantity < 1) {
+        error.textContent = 'กรุณาระบุอุปกรณ์และจำนวนเต็มอย่างน้อย 1 ชิ้น';
+        return;
+      }
+      const previous = accessoryStock[item];
+      if (accessoryStockAction === 'reduce' && quantity > previous) {
+        error.textContent = `ลดได้ไม่เกินจำนวนคงเหลือ ${previous} ชิ้น`;
+        return;
+      }
+      accessoryStock[item] += accessoryStockAction === 'reduce' ? -quantity : quantity;
+      if (!persistAccessoryStock()) {
+        accessoryStock[item] = previous;
+        error.textContent = 'บันทึกไม่ได้ กรุณาอนุญาตให้เบราว์เซอร์ใช้พื้นที่จัดเก็บ';
+        return;
+      }
+      updateOverview();
+      renderAccessoryStock();
+      renderWithdrawalOptions();
+      queueExcelAutoSave();
+      document.getElementById('accessory-stock-dialog').close();
+    }
+
+    function filterTable(name) {
+      const section = document.getElementById(`view-${name}`);
+      const search = section.querySelector(`[data-search="${name}"]`).value.trim().toLocaleLowerCase('th');
+      const type = section.querySelector('[data-filter="type"]').value;
+      let visible = 0;
+      [...document.getElementById(`${name}-body`).rows].forEach((tr, index) => {
+        const row = dataSets[name][index];
+        const match = (!search || rowText(row).includes(search)) && (!type || row.type === type);
+        tr.hidden = !match;
+        if (match) visible++;
+      });
+      section.querySelector(`[data-count="${name}"]`).textContent = `${visible} จาก ${dataSets[name].length} รายการ`;
+      section.querySelector(`[data-empty="${name}"]`).style.display = visible ? 'none' : 'block';
+    }
+    document.querySelectorAll('[data-search]').forEach(input => input.addEventListener('input', () => filterTable(input.dataset.search)));
+    document.querySelectorAll('[data-filter="type"]').forEach(select => select.addEventListener('change', () => filterTable(select.closest('.view').id.replace('view-', ''))));
+
+    document.querySelectorAll('.nav-button').forEach(button => button.addEventListener('click', () => {
+      const view = button.dataset.view;
+      document.querySelectorAll('.view').forEach(section => section.classList.toggle('active', section.id === `view-${view}`));
+      document.querySelectorAll('.nav-button').forEach(item => item.setAttribute('aria-current', item === button ? 'page' : 'false'));
+      document.getElementById('page-title').textContent = views[view][0];
+      document.getElementById('page-subtitle').textContent = views[view][1];
+      if (dataSets[view]) filterTable(view);
+      if (view === 'withdrawal') {
+        renderWithdrawalOptions();
+        renderWithdrawalHistory();
+      }
+      window.scrollTo({top: 0, behavior: 'smooth'});
+    }));
+
+    document.getElementById('login-button').addEventListener('click', () => {
+      if (isAuthenticated) {
+        isAuthenticated = false;
+        updateLoginState();
+        return;
+      }
+      document.getElementById('login-error').textContent = '';
+      document.getElementById('auth-dialog').showModal();
+    });
+    document.getElementById('connect-excel-button').addEventListener('click', connectExcelFile);
+    document.getElementById('export-excel-button').addEventListener('click', () => exportExcelWorkbook(true));
+
+    document.getElementById('login-form').addEventListener('submit', event => {
+      event.preventDefault();
+      const form = event.currentTarget;
+      const userId = form.elements.namedItem('userId').value.trim().toLowerCase();
+      const accessCode = form.elements.namedItem('accessCode').value.trim();
+      if (userId !== 'assetadmin' || accessCode !== 'A7M-4K9P-26') {
+        document.getElementById('login-error').textContent = 'รหัสผู้ใช้หรือรหัสผ่านไม่ถูกต้อง';
+        return;
+      }
+      isAuthenticated = true;
+      form.reset();
+      document.getElementById('auth-dialog').close();
+      updateLoginState();
+    });
+
+    document.getElementById('add-asset-button').addEventListener('click', () => openAssetEditor());
+    document.getElementById('assets-body').addEventListener('click', event => {
+      if (!isAuthenticated) return;
+      const button = event.target.closest('[data-index]');
+      if (!button) return;
+      const index = Number(button.dataset.index);
+      if (button.classList.contains('edit-row')) openAssetEditor(index);
+      if (button.classList.contains('delete-row') && window.confirm(`ลบรายการ ${assetRows[index].serial} ใช่หรือไม่?`)) removeAsset(index);
+    });
+    document.getElementById('add-stock-button').addEventListener('click', () => openStockEditor());
+    document.getElementById('stock-body').addEventListener('click', event => {
+      if (!isAuthenticated) return;
+      const button = event.target.closest('[data-index]');
+      if (!button) return;
+      const index = Number(button.dataset.index);
+      if (button.classList.contains('edit-stock-row')) openStockEditor(index);
+      if (button.classList.contains('delete-stock-row') && window.confirm(`ลบรายการ ${stockRows[index].serial} ออกจากสต็อกใช่หรือไม่?`)) removeStock(index);
+    });
+    document.getElementById('add-damage-button').addEventListener('click', () => openDamageEditor());
+    document.getElementById('damage-body').addEventListener('click', event => {
+      if (!isAuthenticated) return;
+      const button = event.target.closest('[data-index]');
+      if (!button) return;
+      const index = Number(button.dataset.index);
+      if (button.classList.contains('edit-damage-row')) openDamageEditor(index);
+      if (button.classList.contains('delete-damage-row') && window.confirm(`ลบรายการชำรุด ${damageRows[index].serial} ใช่หรือไม่?`)) removeDamage(index);
+    });
+    document.getElementById('add-accessory-stock-button').addEventListener('click', () => openAccessoryStockDialog());
+    document.getElementById('accessory-stock-body').addEventListener('click', event => {
+      const button = event.target.closest('.add-accessory-stock-row');
+      if (button) {
+        openAccessoryStockDialog(button.dataset.item, 'receive');
+        return;
+      }
+      const reduceButton = event.target.closest('.reduce-accessory-stock-row');
+      if (reduceButton) openAccessoryStockDialog(reduceButton.dataset.item, 'reduce');
+    });
+    document.getElementById('asset-form').addEventListener('submit', saveAsset);
+    document.getElementById('damage-form').addEventListener('submit', saveDamage);
+    document.getElementById('stock-type').addEventListener('change', updateStockFormFields);
+    document.getElementById('stock-form').addEventListener('submit', saveStock);
+    document.getElementById('accessory-stock-form').addEventListener('submit', receiveAccessoryStock);
+    document.getElementById('withdrawal-item').addEventListener('change', updateWithdrawalAvailability);
+    document.getElementById('withdrawal-form').addEventListener('submit', submitWithdrawal);
+    document.querySelectorAll('[data-close-dialog]').forEach(button => button.addEventListener('click', () => {
+      document.getElementById(button.dataset.closeDialog).close();
+    }));
+
+    updateLoginState();
+    updateOverview();
+    renderWithdrawalOptions();
+    renderWithdrawalHistory();
+    setLocalToday();
+    initializeExcelFileLink();
+  </script>
+</body>
+</html>
