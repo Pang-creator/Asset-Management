@@ -351,10 +351,10 @@
   <dialog id="auth-dialog" aria-labelledby="auth-title">
     <form class="dialog-body" id="login-form">
       <div class="dialog-head"><div><h2 id="auth-title">เข้าสู่ระบบผู้ดูแล</h2><p>ลงชื่อเข้าใช้เพื่อแก้ไขทรัพย์สินและสต็อก IT</p></div><button class="icon-button" type="button" data-close-dialog="auth-dialog" aria-label="ปิด">×</button></div>
-      <label class="field">รหัสผู้ใช้<input name="userId" autocomplete="username" required></label>
-      <label class="field">รหัสผ่าน<input name="accessCode" type="password" autocomplete="current-password" required></label>
+      <label class="field">อีเมล<input name="email" type="email" autocomplete="username" required></label>
+      <label class="field">รหัสผ่าน<input name="password" type="password" autocomplete="current-password" required></label>
       <p class="form-error" id="login-error" role="alert"></p>
-      <p class="security-note">การเข้าสู่ระบบนี้เป็นการล็อกหน้าจอในไฟล์ HTML และไม่ได้ป้องกันผู้ใช้ที่เปิดดูซอร์สโค้ด</p>
+      <p class="security-note">เข้าสู่ระบบด้วย Supabase Authentication · ข้อมูลจะบันทึกในฐานข้อมูลกลาง</p>
       <div class="dialog-actions"><button class="quiet-button" type="button" data-close-dialog="auth-dialog">ยกเลิก</button><button class="primary-button" type="submit">เข้าสู่ระบบ</button></div>
     </form>
   </dialog>
@@ -429,6 +429,65 @@
 
   <script src="vendor/xlsx.full.min.js"></script>
   <script>
+    const SUPABASE_URL = 'https://qizaxxqkpymzzntwtvhf.supabase.co';
+    const SUPABASE_KEY = 'sb_publishable_R84cu-xqW1mwlyJnUIMiFQ_m_3nLyIQ';
+    let supabaseAccessToken = sessionStorage.getItem('asset.supabase.token') || '';
+
+    async function supabaseRequest(path, options = {}) {
+      const headers = {
+        'apikey': SUPABASE_KEY,
+        'Content-Type': 'application/json',
+        ...(supabaseAccessToken ? {'Authorization': `Bearer ${supabaseAccessToken}`} : {}),
+        ...(options.headers || {})
+      };
+      const response = await fetch(`${SUPABASE_URL}${path}`, {...options, headers});
+      if (!response.ok) {
+        const message = await response.text();
+        throw new Error(message || `Supabase error ${response.status}`);
+      }
+      if (response.status === 204) return null;
+      const text = await response.text();
+      return text ? JSON.parse(text) : null;
+    }
+
+    const cloudTimers = {};
+    function queueCloudSync(table) {
+      if (!supabaseAccessToken) return;
+      clearTimeout(cloudTimers[table]);
+      cloudTimers[table] = setTimeout(() => syncTableToSupabase(table).catch(err => {
+        console.error(err);
+        window.alert('บันทึกข้อมูลขึ้น Supabase ไม่สำเร็จ กรุณาตรวจสอบอินเทอร์เน็ตหรือสิทธิ์ RLS');
+      }), 250);
+    }
+
+    function tablePayload(table) {
+      if (table === 'assets') return assetRows.map(r => ({user_name:r.user||'', department:r.department||'', location:r.location||'', computer_name:r.name||'', type:r.type||'', serial:r.serial||'', brand:r.brand||'', adapter:r.adapter||'', mouse:r.mouse||'', keyboard:r.keyboard||'', monitor:r.monitor||''}));
+      if (table === 'stock') return stockRows.map(r => ({type:r.type||'', serial:r.serial||'', brand:r.brand||'', series:r.series||'', adapter:r.adapter||'', warranty:r.warranty||'', quantity:stockQuantity(r)}));
+      if (table === 'accessories') return [{item:'mouse',quantity:accessoryStock.mouse},{item:'keyboard',quantity:accessoryStock.keyboard}];
+      if (table === 'damage') return damageRows.map(r => ({type:r.type||'', serial:r.serial||'', brand:r.brand||'', series:r.series||'', adapter:r.adapter||'', warranty:r.warranty||'', damage:r.damage||''}));
+      if (table === 'withdrawals') return withdrawalRows.map(r => ({date:r.date||null, requester:r.requester||'', department:r.department||'', location:r.location||'', item:r.item||'', serial:r.serial||'', quantity:Number(r.quantity)||1, note:r.note||''}));
+      return [];
+    }
+
+    async function syncTableToSupabase(table) {
+      await supabaseRequest(`/rest/v1/${table}?id=gt.0`, {method:'DELETE', headers:{'Prefer':'return=minimal'}});
+      const payload = tablePayload(table);
+      if (payload.length) await supabaseRequest(`/rest/v1/${table}`, {method:'POST', headers:{'Prefer':'return=minimal'}, body:JSON.stringify(payload)});
+    }
+
+    async function loadCloudData() {
+      const [assets, stock, accessories, damage, withdrawals] = await Promise.all([
+        supabaseRequest('/rest/v1/assets?select=*'), supabaseRequest('/rest/v1/stock?select=*'),
+        supabaseRequest('/rest/v1/accessories?select=*'), supabaseRequest('/rest/v1/damage?select=*'),
+        supabaseRequest('/rest/v1/withdrawals?select=*&order=created_at.asc')
+      ]);
+      if (Array.isArray(assets) && assets.length) assetRows.splice(0, assetRows.length, ...assets.map(r => ({user:r.user_name||'',department:r.department||'',location:r.location||'',name:r.computer_name||'',type:r.type||'',serial:r.serial||'',brand:r.brand||'',adapter:r.adapter||'',mouse:r.mouse||'',keyboard:r.keyboard||'',monitor:r.monitor||''})));
+      if (Array.isArray(stock) && stock.length) stockRows.splice(0, stockRows.length, ...stock.map(r => ({type:r.type||'',serial:r.serial||'',brand:r.brand||'',series:r.series||'',adapter:r.adapter||'',warranty:r.warranty||'',quantity:r.quantity??1})));
+      if (Array.isArray(accessories) && accessories.length) { accessories.forEach(r => { if (r.item === 'mouse' || r.item === 'keyboard') accessoryStock[r.item] = Number(r.quantity)||0; }); }
+      if (Array.isArray(damage) && damage.length) damageRows.splice(0, damageRows.length, ...damage.map(r => ({type:r.type||'',serial:r.serial||'',brand:r.brand||'',series:r.series||'',adapter:r.adapter||'',warranty:r.warranty||'',damage:r.damage||''})));
+      if (Array.isArray(withdrawals)) withdrawalRows.splice(0, withdrawalRows.length, ...withdrawals.map(r => ({date:r.date||'',requester:r.requester||'',department:r.department||'',location:r.location||'',item:r.item||'',serial:r.serial||'',quantity:r.quantity||1,note:r.note||''})));
+      renderAssets(); renderStock(); renderAccessoryStock(); renderDamage(); renderWithdrawalHistory(); renderWithdrawalOptions(); updateOverview();
+    }
     const defaultAssetRows = [
       {user:'PVilaikan', department:'HR', location:'Office', name:'PVilaikan', type:'Notebook', serial:'PF54X1CG', brand:'Dell', adapter:'/', mouse:'/', keyboard:'', monitor:''},
       {user:'Pachari Wongmuang [Pla]', department:'inbound', location:'inbound', name:'inbound01', type:'PC', serial:'GM0RFR3W', brand:'Lenovo', adapter:'', mouse:'/', keyboard:'/', monitor:'/'},
@@ -438,7 +497,7 @@
     ];
     const assetStorageKey = 'asset-dashboard.assets.v1';
     const assetRows = restoreAssetRows();
-    let isAuthenticated = false;
+    let isAuthenticated = Boolean(supabaseAccessToken);
     let editingIndex = -1;
 
     function restoreAssetRows() {
@@ -452,6 +511,7 @@
     function persistAssetRows() {
       try {
         localStorage.setItem(assetStorageKey, JSON.stringify(assetRows));
+        queueCloudSync('assets');
         return true;
       } catch {
         return false;
@@ -490,6 +550,7 @@
     function persistStockRows() {
       try {
         localStorage.setItem(stockStorageKey, JSON.stringify(stockRows));
+        queueCloudSync('stock');
         return true;
       } catch {
         return false;
@@ -513,6 +574,7 @@
     function persistAccessoryStock() {
       try {
         localStorage.setItem(accessoryStorageKey, JSON.stringify(accessoryStock));
+        queueCloudSync('accessories');
         return true;
       } catch {
         return false;
@@ -530,6 +592,7 @@
     function persistWithdrawals() {
       try {
         localStorage.setItem(withdrawalStorageKey, JSON.stringify(withdrawalRows));
+        queueCloudSync('withdrawals');
         return true;
       } catch {
         return false;
@@ -558,6 +621,7 @@
     function persistDamageRows() {
       try {
         localStorage.setItem(damageStorageKey, JSON.stringify(damageRows));
+        queueCloudSync('damage');
         return true;
       } catch {
         return false;
@@ -568,7 +632,7 @@
       overview: ['ภาพรวมทรัพย์สิน', 'สถานะอุปกรณ์และสต็อกทั้งหมดในที่เดียว'],
       assets: ['อุปกรณ์ที่กำลังใช้งาน', 'รายการอุปกรณ์และผู้ใช้งาน'],
       stock: ['สต็อกอุปกรณ์ IT', 'คอมพิวเตอร์และอุปกรณ์อื่นๆ พร้อมจ่าย'],
-      withdrawal: ['เบิกอุปกรณ์', 'บันทึกคำขอและปรับยอดคงเหลือในเบราว์เซอร์นี้'],
+      withdrawal: ['เบิกอุปกรณ์', 'บันทึกคำขอและปรับยอดคงเหลือในฐานข้อมูลกลาง'],
       damage: ['รายการชำรุด', 'อุปกรณ์ที่ต้องตรวจสอบหรือส่งซ่อม']
     };
     const escapeHtml = value => String(value ?? '').replace(/[&<>"']/g, char => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));
@@ -1320,11 +1384,11 @@
       window.scrollTo({top: 0, behavior: 'smooth'});
     }));
 
-    document.getElementById('login-button').addEventListener('click', () => {
+    document.getElementById('login-button').addEventListener('click', async () => {
       if (isAuthenticated) {
-        isAuthenticated = false;
-        updateLoginState();
-        return;
+        try { await supabaseRequest('/auth/v1/logout', {method:'POST'}); } catch {}
+        supabaseAccessToken = ''; sessionStorage.removeItem('asset.supabase.token');
+        isAuthenticated = false; updateLoginState(); return;
       }
       document.getElementById('login-error').textContent = '';
       document.getElementById('auth-dialog').showModal();
@@ -1332,19 +1396,26 @@
     document.getElementById('connect-excel-button').addEventListener('click', connectExcelFile);
     document.getElementById('export-excel-button').addEventListener('click', () => exportExcelWorkbook(true));
 
-    document.getElementById('login-form').addEventListener('submit', event => {
+    document.getElementById('login-form').addEventListener('submit', async event => {
       event.preventDefault();
       const form = event.currentTarget;
-      const userId = form.elements.namedItem('userId').value.trim().toLowerCase();
-      const accessCode = form.elements.namedItem('accessCode').value.trim();
-      if (userId !== 'assetadmin' || accessCode !== 'A7M-4K9P-26') {
-        document.getElementById('login-error').textContent = 'รหัสผู้ใช้หรือรหัสผ่านไม่ถูกต้อง';
-        return;
+      const email = form.elements.namedItem('email').value.trim();
+      const password = form.elements.namedItem('password').value;
+      const error = document.getElementById('login-error');
+      error.textContent = 'กำลังเข้าสู่ระบบ...';
+      try {
+        const result = await supabaseRequest('/auth/v1/token?grant_type=password', {method:'POST', body:JSON.stringify({email,password})});
+        supabaseAccessToken = result.access_token;
+        sessionStorage.setItem('asset.supabase.token', supabaseAccessToken);
+        isAuthenticated = true;
+        await loadCloudData();
+        form.reset(); error.textContent = '';
+        document.getElementById('auth-dialog').close();
+        updateLoginState();
+      } catch (err) {
+        console.error(err);
+        error.textContent = 'อีเมลหรือรหัสผ่านไม่ถูกต้อง หรือไม่สามารถเชื่อมต่อ Supabase ได้';
       }
-      isAuthenticated = true;
-      form.reset();
-      document.getElementById('auth-dialog').close();
-      updateLoginState();
     });
 
     document.getElementById('add-asset-button').addEventListener('click', () => openAssetEditor());
@@ -1396,6 +1467,7 @@
     }));
 
     updateLoginState();
+    if (isAuthenticated) loadCloudData().catch(err => { console.error(err); supabaseAccessToken=''; sessionStorage.removeItem('asset.supabase.token'); isAuthenticated=false; updateLoginState(); });
     updateOverview();
     renderWithdrawalOptions();
     renderWithdrawalHistory();
