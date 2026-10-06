@@ -438,8 +438,15 @@
     }
 
     function saveSupabaseSession(session) {
-      if (session) localStorage.setItem(SUPABASE_SESSION_KEY, JSON.stringify(session));
-      else localStorage.removeItem(SUPABASE_SESSION_KEY);
+      // Authentication must not fail just because browser storage is blocked/full.
+      try {
+        if (session) localStorage.setItem(SUPABASE_SESSION_KEY, JSON.stringify(session));
+        else localStorage.removeItem(SUPABASE_SESSION_KEY);
+        return true;
+      } catch (error) {
+        console.warn('Could not persist Supabase session:', error);
+        return false;
+      }
     }
 
     async function supabasePasswordLogin(email, password) {
@@ -452,7 +459,12 @@
         body: JSON.stringify({ email, password })
       });
       const data = await response.json().catch(() => ({}));
-      if (!response.ok) throw new Error(data?.msg || data?.message || data?.error_description || 'เข้าสู่ระบบไม่สำเร็จ');
+      if (!response.ok) {
+        throw new Error(data?.msg || data?.message || data?.error_description || data?.error || `เข้าสู่ระบบไม่สำเร็จ (HTTP ${response.status})`);
+      }
+      if (!data?.access_token) {
+        throw new Error('Supabase ตอบกลับสำเร็จ แต่ไม่พบ access token');
+      }
       saveSupabaseSession(data);
       return data;
     }
@@ -1413,7 +1425,11 @@
         updateLoginState();
       } catch (error) {
         console.error('Supabase login error:', error);
-        document.getElementById('login-error').textContent = 'อีเมลหรือรหัสผ่านไม่ถูกต้อง หรือไม่สามารถเชื่อมต่อ Supabase ได้';
+        const message = String(error?.message || 'ไม่ทราบสาเหตุ');
+        const friendly = /invalid login credentials/i.test(message)
+          ? 'อีเมลหรือรหัสผ่านไม่ถูกต้อง'
+          : `เข้าสู่ระบบไม่สำเร็จ: ${message}`;
+        document.getElementById('login-error').textContent = friendly;
       } finally {
         submitButton.disabled = false;
         submitButton.textContent = 'เข้าสู่ระบบ';
