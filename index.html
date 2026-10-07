@@ -240,7 +240,7 @@
         <div class="kpis">
           <article class="kpi"><div class="kpi-top"><span>อุปกรณ์ที่ใช้งาน</span><span class="kpi-symbol" aria-hidden="true">▣</span></div><div class="kpi-value"><span id="active-total">5</span><span class="kpi-unit">รายการ</span></div></article>
           <article class="kpi"><div class="kpi-top"><span>อุปกรณ์ในสต็อก</span><span class="kpi-symbol" aria-hidden="true">▤</span></div><div class="kpi-value"><span id="stock-total">14</span><span class="kpi-unit">ชิ้น</span></div></article>
-          <article class="kpi"><div class="kpi-top"><span>รายการชำรุด</span><span class="kpi-symbol" aria-hidden="true">⌁</span></div><div class="kpi-value">6<span class="kpi-unit">เครื่อง</span></div></article>
+          <article class="kpi"><div class="kpi-top"><span>รายการชำรุด</span><span class="kpi-symbol" aria-hidden="true">⌁</span></div><div class="kpi-value"><span id="damage-total">0</span><span class="kpi-unit">เครื่อง</span></div></article>
           <article class="kpi"><div class="kpi-top"><span>เมาส์คงเหลือ</span><span class="kpi-symbol" aria-hidden="true">⌖</span></div><div class="kpi-value"><span id="mouse-total">23</span><span class="kpi-unit">ชิ้น</span></div></article>
           <article class="kpi"><div class="kpi-top"><span>คีย์บอร์ดคงเหลือ</span><span class="kpi-symbol" aria-hidden="true">⌨</span></div><div class="kpi-value"><span id="keyboard-total">15</span><span class="kpi-unit">ชิ้น</span></div></article>
         </div>
@@ -277,11 +277,9 @@
 
         <div class="lower-grid">
           <section class="panel">
-            <div class="panel-head"><div><h2 class="panel-title">สาเหตุของรายการชำรุด</h2><p class="panel-note">Notebook · 6 เครื่อง</p></div></div>
-            <div class="compact-list">
-              <div class="damage-row"><span>ขาพับจอเสีย</span><div class="damage-track"><div class="damage-fill" style="--width:50%"></div></div><span class="damage-count">3</span></div>
-              <div class="damage-row"><span>ช่อง USB เสีย 2 ช่อง</span><div class="damage-track"><div class="damage-fill" style="--width:33.33%"></div></div><span class="damage-count">2</span></div>
-              <div class="damage-row"><span>แบตเตอรี่เสื่อม</span><div class="damage-track"><div class="damage-fill" style="--width:16.67%"></div></div><span class="damage-count">1</span></div>
+            <div class="panel-head"><div><h2 class="panel-title">สาเหตุของรายการชำรุด</h2><p class="panel-note" id="damage-chart-note">รวม 0 เครื่อง</p></div></div>
+            <div class="compact-list" id="damage-summary-list">
+              <div class="damage-row"><span>ยังไม่มีรายการชำรุด</span><div class="damage-track"><div class="damage-fill" style="--width:0%"></div></div><span class="damage-count">0</span></div>
             </div>
           </section>
           <section class="panel">
@@ -845,6 +843,25 @@
       document.getElementById('keyboard-total').textContent = accessoryStock.keyboard;
       document.getElementById('mouse-stock-total').textContent = accessoryStock.mouse;
       document.getElementById('keyboard-stock-total').textContent = accessoryStock.keyboard;
+
+      // รายการชำรุดบนภาพรวมต้องอ้างอิงข้อมูลจริงจาก Supabase เท่านั้น
+      const damageTotal = damageRows.length;
+      document.getElementById('damage-total').textContent = damageTotal;
+      document.getElementById('damage-chart-note').textContent = `รวม ${damageTotal} เครื่อง`;
+      const damageSummary = new Map();
+      damageRows.forEach(row => {
+        const cause = String(row.damage || '').trim() || 'ไม่ระบุอาการ';
+        damageSummary.set(cause, (damageSummary.get(cause) || 0) + 1);
+      });
+      const damageSummaryList = document.getElementById('damage-summary-list');
+      if (!damageTotal) {
+        damageSummaryList.innerHTML = '<div class="damage-row"><span>ยังไม่มีรายการชำรุด</span><div class="damage-track"><div class="damage-fill" style="--width:0%"></div></div><span class="damage-count">0</span></div>';
+      } else {
+        damageSummaryList.innerHTML = [...damageSummary.entries()]
+          .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0], 'th'))
+          .map(([cause, count]) => `<div class="damage-row"><span>${escapeHtml(cause)}</span><div class="damage-track"><div class="damage-fill" style="--width:${count / damageTotal * 100}%"></div></div><span class="damage-count">${count}</span></div>`)
+          .join('');
+      }
     }
 
     function renderWithdrawalOptions(selectedValue = '') {
