@@ -217,7 +217,7 @@
           <button class="nav-button" data-view="damage"><span class="nav-icon" aria-hidden="true">⌁</span><span>ชำรุด</span></button>
         </nav>
       </div>
-      <div class="rail-bottom">ข้อมูลจาก Asset.xlsx<br>Snapshot · 30 ก.ย. 2026</div>
+      <div class="rail-bottom">ข้อมูลจาก Supabase Database<br>Asset Management</div>
     </aside>
 
     <main>
@@ -228,10 +228,10 @@
           <button class="login-button" id="login-button" type="button"><span aria-hidden="true">▣</span><span id="login-label">เข้าสู่ระบบ</span></button>
         </div>
       </header>
-      <section class="excel-toolbar" aria-label="บันทึกและส่งออก Excel">
-        <span class="excel-status" id="excel-status" data-state="disconnected">เชื่อมไฟล์ Asset-Inventory-2026-10-01T03-45-34.xlsx เพื่อบันทึกอัตโนมัติ</span>
-        <div class="excel-tools">
-          <button class="quiet-button" id="connect-excel-button" type="button" title="เลือกไฟล์ Asset-Inventory-2026-10-01T03-45-34.xlsx เพื่อบันทึกอัตโนมัติ"><span aria-hidden="true">▣</span> เชื่อมไฟล์ Excel</button>
+      <section class="excel-toolbar" aria-label="นำเข้าและส่งออก Excel">
+        <div class="excel-tools" style="margin-left:auto">
+          <input id="import-excel-input" type="file" accept=".xlsx,.xls" hidden>
+          <button class="quiet-button" id="import-excel-button" type="button" title="นำเข้าข้อมูล Asset จากไฟล์ Excel"><span aria-hidden="true">⇧</span> นำเข้าข้อมูล Excel</button>
           <button class="primary-button" id="export-excel-button" type="button" title="ดาวน์โหลดข้อมูลทั้งหมดเป็นไฟล์ Excel"><span aria-hidden="true">⇩</span> ส่งออก Excel</button>
         </div>
       </section>
@@ -399,7 +399,7 @@
 
   <dialog id="accessory-stock-dialog" aria-labelledby="accessory-stock-title">
     <form class="dialog-body" id="accessory-stock-form">
-      <div class="dialog-head"><div><h2 id="accessory-stock-title">รับเข้าเมาส์หรือคีย์บอร์ด</h2><p id="accessory-stock-description">จำนวนที่รับเข้าจะเพิ่มในยอดคงเหลือและไฟล์ Excel</p></div><button class="icon-button" type="button" data-close-dialog="accessory-stock-dialog" aria-label="ปิด">×</button></div>
+      <div class="dialog-head"><div><h2 id="accessory-stock-title">รับเข้าเมาส์หรือคีย์บอร์ด</h2><p id="accessory-stock-description">จำนวนที่รับเข้าจะบันทึกลงฐานข้อมูล Supabase</p></div><button class="icon-button" type="button" data-close-dialog="accessory-stock-dialog" aria-label="ปิด">×</button></div>
       <label class="field">อุปกรณ์<select name="item" required><option value="mouse">เมาส์</option><option value="keyboard">คีย์บอร์ด</option></select></label>
       <label class="field"><span id="accessory-stock-quantity-label">จำนวนที่รับเข้า</span><input name="quantity" type="number" min="1" step="1" value="1" required></label>
       <p class="form-error" id="accessory-stock-error" role="alert"></p>
@@ -629,6 +629,7 @@
 
     function setExcelStatus(message, state = 'disconnected') {
       const status = document.getElementById('excel-status');
+      if (!status) return;
       status.textContent = message;
       status.dataset.state = state;
     }
@@ -762,13 +763,8 @@
     }
 
     function queueExcelAutoSave() {
-      if (!linkedExcelHandle) {
-        setExcelStatus(`ยังไม่ได้เชื่อม ${targetExcelFilename} · ไม่มีการเขียนไฟล์`, 'error');
-        return;
-      }
-      excelSaveQueue = excelSaveQueue.then(() => exportExcelWorkbook()).catch(error => {
-        setExcelStatus(`บันทึก Excel ไม่สำเร็จ: ${error.message}`, 'error');
-      });
+      // Supabase เป็นฐานข้อมูลหลัก ไม่เขียนกลับไฟล์ Excel อัตโนมัติ
+      return;
     }
 
     async function connectExcelFile() {
@@ -802,6 +798,84 @@
 
     async function initializeExcelFileLink() {
       await restoreLinkedExcelHandle();
+    }
+
+    function normalizeExcelHeader(value) {
+      return String(value ?? '').trim().toLowerCase().replace(/[\s._\-\/]+/g, '');
+    }
+
+    function excelValue(row, aliases) {
+      const entries = Object.entries(row || {});
+      for (const alias of aliases) {
+        const key = normalizeExcelHeader(alias);
+        const found = entries.find(([header]) => normalizeExcelHeader(header) === key);
+        if (found) return String(found[1] ?? '').trim();
+      }
+      return '';
+    }
+
+    async function importAssetsFromExcel(file) {
+      if (!isAuthenticated) {
+        window.alert('กรุณาเข้าสู่ระบบก่อนนำเข้าข้อมูล Excel');
+        return;
+      }
+      if (typeof XLSX === 'undefined') {
+        window.alert('ไม่พบไลบรารี Excel ในโฟลเดอร์ vendor');
+        return;
+      }
+      try {
+        const bytes = await file.arrayBuffer();
+        const workbook = XLSX.read(bytes, {type: 'array'});
+        const sheetName = workbook.SheetNames.find(name => normalizeExcelHeader(name) === 'asset') || workbook.SheetNames[0];
+        if (!sheetName) throw new Error('ไม่พบ Sheet ในไฟล์ Excel');
+        const rows = XLSX.utils.sheet_to_json(workbook.Sheets[sheetName], {defval: '', raw: false});
+        if (!rows.length) throw new Error('ไม่พบข้อมูล Asset ในไฟล์ Excel');
+
+        const existingSerials = new Set(assetRows.map(row => String(row.serial || '').trim().toLowerCase()).filter(Boolean));
+        const seenSerials = new Set();
+        const payload = [];
+        let skipped = 0;
+
+        for (const row of rows) {
+          const serial = excelValue(row, ['Serial No.', 'Serial No', 'Serial', 'S/N']);
+          const userName = excelValue(row, ['User Name', 'User', 'ชื่อผู้ใช้งาน', 'ผู้ใช้งาน']);
+          const computerName = excelValue(row, ['Computer Name', 'ComputerName', 'ชื่อคอมพิวเตอร์']);
+          const type = excelValue(row, ['Type', 'ประเภท']);
+          if (!serial || !computerName || !type) { skipped++; continue; }
+          const serialKey = serial.toLowerCase();
+          if (existingSerials.has(serialKey) || seenSerials.has(serialKey)) { skipped++; continue; }
+          seenSerials.add(serialKey);
+          payload.push({
+            user_name: userName,
+            department: excelValue(row, ['Depart', 'Department', 'แผนก']),
+            location: excelValue(row, ['Location', 'สถานที่']),
+            computer_name: computerName,
+            type,
+            serial,
+            brand: excelValue(row, ['Brand', 'ยี่ห้อ']),
+            adapter: excelValue(row, ['Adepter', 'Adapter', 'อะแดปเตอร์']),
+            mouse: excelValue(row, ['Mouse', 'เมาส์']),
+            keyboard: excelValue(row, ['Keyboard', 'คีย์บอร์ด']),
+            monitor: excelValue(row, ['Monitor', 'จอ'])
+          });
+        }
+
+        if (!payload.length) {
+          window.alert(`ไม่มีข้อมูลใหม่ให้นำเข้า\nข้าม ${skipped} รายการ (ข้อมูลไม่ครบหรือ Serial ซ้ำ)`);
+          return;
+        }
+        if (!window.confirm(`พบข้อมูลใหม่ ${payload.length} รายการ\nข้าม ${skipped} รายการ\n\nต้องการบันทึกลง Supabase หรือไม่?`)) return;
+
+        const batchSize = 200;
+        for (let i = 0; i < payload.length; i += batchSize) {
+          await supabaseTable('assets', {method: 'POST', body: payload.slice(i, i + batchSize), prefer: 'return=minimal'});
+        }
+        await loadDatabaseData();
+        filterTable('assets');
+        window.alert(`นำเข้าข้อมูล Asset สำเร็จ ${payload.length} รายการ${skipped ? `\nข้าม ${skipped} รายการ` : ''}`);
+      } catch (error) {
+        window.alert(`นำเข้า Excel ไม่สำเร็จ: ${error.message}`);
+      }
     }
 
     function updateOverview() {
@@ -1120,7 +1194,7 @@
       const label = item === 'mouse' ? 'เมาส์' : 'คีย์บอร์ด';
       const available = accessoryStock[item];
       document.getElementById('accessory-stock-title').textContent = action === 'reduce' ? `ลดจำนวน${label}` : `รับเข้า${label}`;
-      document.getElementById('accessory-stock-description').textContent = action === 'reduce' ? `คงเหลือ ${available} ชิ้น · ระบุจำนวนที่ต้องการตัดออก` : 'จำนวนที่รับเข้าจะเพิ่มในยอดคงเหลือและไฟล์ Excel';
+      document.getElementById('accessory-stock-description').textContent = action === 'reduce' ? `คงเหลือ ${available} ชิ้น · ระบุจำนวนที่ต้องการตัดออก` : 'จำนวนที่รับเข้าจะบันทึกลงฐานข้อมูล Supabase';
       document.getElementById('accessory-stock-quantity-label').textContent = action === 'reduce' ? `จำนวนที่ลด (คงเหลือ ${available})` : 'จำนวนที่รับเข้า';
       document.getElementById('accessory-stock-submit').textContent = action === 'reduce' ? 'บันทึกลดจำนวน' : 'บันทึกรับเข้า';
       form.elements.namedItem('quantity').max = action === 'reduce' ? String(available) : '';
@@ -1179,7 +1253,15 @@
       document.getElementById('login-error').textContent = '';
       document.getElementById('auth-dialog').showModal();
     });
-    document.getElementById('connect-excel-button').addEventListener('click', connectExcelFile);
+    document.getElementById('import-excel-button').addEventListener('click', () => {
+      if (!isAuthenticated) { document.getElementById('auth-dialog').showModal(); return; }
+      document.getElementById('import-excel-input').click();
+    });
+    document.getElementById('import-excel-input').addEventListener('change', async event => {
+      const file = event.target.files?.[0];
+      if (file) await importAssetsFromExcel(file);
+      event.target.value = '';
+    });
     document.getElementById('export-excel-button').addEventListener('click', () => exportExcelWorkbook(true));
 
     document.getElementById('login-form').addEventListener('submit', async event => {
@@ -1265,7 +1347,7 @@
     renderWithdrawalOptions();
     renderWithdrawalHistory();
     setLocalToday();
-    initializeExcelFileLink();
+
   </script>
 </body>
 </html>
