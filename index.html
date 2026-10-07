@@ -332,7 +332,7 @@
             </form>
           </section>
           <section class="panel">
-            <div class="panel-head"><div><h2 class="panel-title">ประวัติการเบิก</h2><p class="panel-note">บันทึกจากเบราว์เซอร์นี้</p></div><strong class="result-count" id="withdrawal-count">0 รายการ</strong></div>
+            <div class="panel-head"><div><h2 class="panel-title">ประวัติการเบิก</h2><p class="panel-note">บันทึกจากฐานข้อมูล Supabase</p></div><strong class="result-count" id="withdrawal-count">0 รายการ</strong></div>
             <div class="table-wrap"><table><thead><tr><th>วันที่</th><th>ผู้เบิก</th><th>อุปกรณ์</th><th>จำนวน</th><th>สถานะ</th></tr></thead><tbody id="withdrawal-history-body"></tbody></table><div class="empty-state" id="withdrawal-empty">ยังไม่มีรายการเบิก</div></div>
           </section>
         </div>
@@ -497,6 +497,7 @@
         });
         if (!response.ok) throw new Error('session expired');
         isAuthenticated = true;
+        await loadDatabaseData();
       } catch {
         saveSupabaseSession(null);
         isAuthenticated = false;
@@ -504,146 +505,77 @@
       updateLoginState();
     }
 
-    const defaultAssetRows = [
-      {user:'PVilaikan', department:'HR', location:'Office', name:'PVilaikan', type:'Notebook', serial:'PF54X1CG', brand:'Dell', adapter:'/', mouse:'/', keyboard:'', monitor:''},
-      {user:'Pachari Wongmuang [Pla]', department:'inbound', location:'inbound', name:'inbound01', type:'PC', serial:'GM0RFR3W', brand:'Lenovo', adapter:'', mouse:'/', keyboard:'/', monitor:'/'},
-      {user:'Salinthip Seesuwong', department:'B2B', location:'B2B', name:'Salinthip-Seesuwong-B2B', type:'Notebook', serial:'PF5504GA', brand:'Lenovo', adapter:'/', mouse:'/', keyboard:'', monitor:''},
-      {user:'Pachari Wongmuang [Pla]', department:'inbound', location:'inbound', name:'Inbound4', type:'Notebook', serial:'7BV3BG3', brand:'Dell', adapter:'/', mouse:'/', keyboard:'', monitor:''},
-      {user:'หัวหน้าB2B', department:'B2B', location:'B2B', name:'B2B01', type:'PC', serial:'GM0RFR4T', brand:'Lenovo', adapter:'', mouse:'/', keyboard:'/', monitor:'/'}
-    ];
-    const assetStorageKey = 'asset-dashboard.assets.v1';
-    const assetRows = restoreAssetRows();
+    // ข้อมูลหลักทั้งหมดอ่าน/บันทึกจาก Supabase Database
+    const assetRows = [];
+    const stockRows = [];
+    const damageRows = [];
+    const withdrawalRows = [];
+    const accessoryStock = {mouse: 0, keyboard: 0};
     let isAuthenticated = false;
     let editingIndex = -1;
-
-    function restoreAssetRows() {
-      try {
-        const savedRows = JSON.parse(localStorage.getItem(assetStorageKey) || 'null');
-        if (Array.isArray(savedRows) && savedRows.every(row => row && typeof row === 'object')) return savedRows;
-      } catch {}
-      return defaultAssetRows.map(row => ({...row}));
-    }
-
-    function persistAssetRows() {
-      try {
-        localStorage.setItem(assetStorageKey, JSON.stringify(assetRows));
-        return true;
-      } catch {
-        return false;
-      }
-    }
-
-    const defaultStockRows = [
-      {type:'Notebook', serial:'8KPQMJ3', brand:'Dell', series:'Inspiron 15 3511', adapter:'/', warranty:'สิ้นสุด'},
-      {type:'Notebook', serial:'PF54ZFSQ', brand:'Lenovo', series:'IdeaPad Slim 3 14IAH8 - Type 83EQ', adapter:'/', warranty:'พ.ย. 2026'},
-      {type:'Notebook', serial:'PF5495LL', brand:'Lenovo', series:'IdeaPad Slim 3 15IRH8 - Type 83EM', adapter:'/', warranty:'สิ้นสุด'},
-      {type:'PC', serial:'GM0J67S6', brand:'Lenovo', series:'V55t Gen 2 13ACN Desktop (Lenovo) - Type 11RN', warranty:'มี.ค. 2027'},
-      {type:'PC', serial:'GM0J67NY', brand:'Lenovo', series:'V55t Gen 2 13ACN Desktop (Lenovo) - Type 11RN', warranty:'มี.ค. 2027'},
-      {type:'PC', serial:'2N7LSH3', brand:'Dell', series:'OptiPlex 3080 Tower', warranty:'สิ้นสุด'},
-      {type:'PC', serial:'GM0J67LZ', brand:'Lenovo', series:'V55t Gen 2 13ACN Desktop (Lenovo) - Type 11RN', warranty:'มี.ค. 2027'},
-      {type:'PC', serial:'GM0J67N0', brand:'Lenovo', series:'V55t Gen 2 13ACN Desktop (Lenovo) - Type 11RN', warranty:'มี.ค. 2027'},
-      {type:'PC', serial:'GM0J67P2', brand:'Lenovo', series:'V55t Gen 2 13ACN Desktop (Lenovo) - Type 11RN', warranty:'มี.ค. 2027'},
-      {type:'PC', serial:'GM0J67R5', brand:'Lenovo', series:'V55t Gen 2 13ACN Desktop (Lenovo) - Type 11RN', warranty:'มี.ค. 2027'},
-      {type:'PC', serial:'GM0J67PS', brand:'Lenovo', series:'V55t Gen 2 13ACN Desktop (Lenovo) - Type 11RN', warranty:'มี.ค. 2027'},
-      {type:'PC', serial:'GM0J67PF', brand:'Lenovo', series:'V55t Gen 2 13ACN Desktop (Lenovo) - Type 11RN', warranty:'มี.ค. 2027'},
-      {type:'PC', serial:'GM0J67S3', brand:'Lenovo', series:'V55t Gen 2 13ACN Desktop (Lenovo) - Type 11RN', warranty:'มี.ค. 2027'},
-      {type:'PC', serial:'GM0J67NV', brand:'Lenovo', series:'V55t Gen 2 13ACN Desktop (Lenovo) - Type 11RN', warranty:'มี.ค. 2027'}
-    ];
-    const stockStorageKey = 'asset-dashboard.stockRows.v1';
-    const stockRows = restoreStockRows();
-
-    function restoreStockRows() {
-      try {
-        const savedRows = JSON.parse(localStorage.getItem(stockStorageKey) || 'null');
-        if (Array.isArray(savedRows) && savedRows.every(row => row && typeof row === 'object')) {
-          return savedRows.map(row => ({...row, adapter: row.adapter ?? defaultStockRows.find(item => item.serial && item.serial === row.serial)?.adapter ?? ''}));
-        }
-      } catch {}
-      return defaultStockRows.map(row => ({...row}));
-    }
-
-    function persistStockRows() {
-      try {
-        localStorage.setItem(stockStorageKey, JSON.stringify(stockRows));
-        return true;
-      } catch {
-        return false;
-      }
-    }
-
-    const accessoryStorageKey = 'asset-dashboard.accessories.v1';
-    const withdrawalStorageKey = 'asset-dashboard.withdrawals.v1';
-    const accessoryStock = restoreAccessoryStock();
-    const withdrawalRows = restoreWithdrawals();
     let accessoryStockAction = 'receive';
 
-    function restoreAccessoryStock() {
-      try {
-        const saved = JSON.parse(localStorage.getItem(accessoryStorageKey) || 'null');
-        if (saved && Number.isInteger(saved.mouse) && Number.isInteger(saved.keyboard) && saved.mouse >= 0 && saved.keyboard >= 0) return saved;
-      } catch {}
-      return {mouse: 23, keyboard: 15};
+    function persistAssetRows() { return true; }
+    function persistStockRows() { return true; }
+    function persistDamageRows() { return true; }
+    function persistAccessoryStock() { return true; }
+    function persistWithdrawals() { return true; }
+
+    function supabaseHeaders(prefer = '') {
+      const session = getSupabaseSession();
+      const headers = {
+        'apikey': SUPABASE_PUBLISHABLE_KEY,
+        'Content-Type': 'application/json'
+      };
+      if (session?.access_token) headers.Authorization = `Bearer ${session.access_token}`;
+      if (prefer) headers.Prefer = prefer;
+      return headers;
     }
 
-    function persistAccessoryStock() {
-      try {
-        localStorage.setItem(accessoryStorageKey, JSON.stringify(accessoryStock));
-        return true;
-      } catch {
-        return false;
+    async function supabaseTable(table, {method = 'GET', query = '', body, prefer = ''} = {}) {
+      const response = await fetch(`${SUPABASE_URL}/rest/v1/${table}${query ? `?${query}` : ''}`, {
+        method, headers: supabaseHeaders(prefer), body: body === undefined ? undefined : JSON.stringify(body)
+      });
+      const text = await response.text();
+      let data = null;
+      try { data = text ? JSON.parse(text) : null; } catch { data = text; }
+      if (!response.ok) {
+        const message = data?.message || data?.details || data?.hint || data?.error || `HTTP ${response.status}`;
+        throw new Error(`${table}: ${message}`);
       }
+      return data;
     }
 
-    function restoreWithdrawals() {
-      try {
-        const saved = JSON.parse(localStorage.getItem(withdrawalStorageKey) || '[]');
-        if (Array.isArray(saved)) return saved;
-      } catch {}
-      return [];
-    }
+    const replaceRows = (target, rows) => { target.splice(0, target.length, ...rows); };
+    const mapAssetFromDb = row => ({id: row.id, user: row.user_name || '', department: row.department || '', location: row.location || '', name: row.computer_name || '', type: row.type || '', serial: row.serial || '', brand: row.brand || '', adapter: row.adapter || '', mouse: row.mouse || '', keyboard: row.keyboard || '', monitor: row.monitor || ''});
+    const mapStockFromDb = row => ({id: row.id, type: row.type || '', serial: row.serial || '', brand: row.brand || '', series: row.series || '', quantity: Number.isInteger(Number(row.quantity)) ? Number(row.quantity) : 1, adapter: row.adapter || '', warranty: row.warranty || ''});
+    const mapDamageFromDb = row => ({id: row.id, type: row.type || '', serial: row.serial || '', brand: row.brand || '', series: row.series || '', adapter: row.adapter || '', warranty: row.warranty || '', damage: row.damage || ''});
+    const mapWithdrawalFromDb = row => ({id: row.id, date: row.withdrawal_date || '', requester: row.requester || '', department: row.department || '', location: row.location || '', item: row.item || '', serial: row.serial || '', quantity: Number(row.quantity || 1), note: row.note || ''});
 
-    function persistWithdrawals() {
-      try {
-        localStorage.setItem(withdrawalStorageKey, JSON.stringify(withdrawalRows));
-        return true;
-      } catch {
-        return false;
-      }
-    }
-
-    const defaultDamageRows = [
-      {type:'Notebook', serial:'BZ6BNJ3', brand:'Dell', series:'Inspiron 15 3511', adapter:'', warranty:'สิ้นสุด', damage:'ขาพับจอเสีย'},
-      {type:'Notebook', serial:'DZJ2HG3', brand:'Dell', series:'Latitude 3420', adapter:'/', warranty:'สิ้นสุด', damage:'ช่องUSBเสีย2ช่อง'},
-      {type:'Notebook', serial:'C5BRMJ3', brand:'Dell', series:'Inspiron 15 3511', adapter:'/', warranty:'สิ้นสุด', damage:'ขาพับจอเสีย'},
-      {type:'Notebook', serial:'5R76NJ3', brand:'Dell', series:'Inspiron 15 3511', adapter:'', warranty:'สิ้นสุด', damage:'ขาพับจอเสีย'},
-      {type:'Notebook', serial:'75QWXQ2', brand:'Dell', series:'Latitude 3490', adapter:'/', warranty:'สิ้นสุด', damage:'แบตเสื่อม'},
-      {type:'Notebook', serial:'41G2HG3', brand:'Dell', series:'Latitude 3420', adapter:'/', warranty:'สิ้นสุด', damage:'ช่องUSBเสีย2ช่อง'}
-    ];
-    const damageStorageKey = 'asset-dashboard.damageRows.v1';
-    const damageRows = restoreDamageRows();
-
-    function restoreDamageRows() {
-      try {
-        const savedRows = JSON.parse(localStorage.getItem(damageStorageKey) || 'null');
-        if (Array.isArray(savedRows) && savedRows.every(row => row && typeof row === 'object')) return savedRows;
-      } catch {}
-      return defaultDamageRows.map(row => ({...row}));
-    }
-
-    function persistDamageRows() {
-      try {
-        localStorage.setItem(damageStorageKey, JSON.stringify(damageRows));
-        return true;
-      } catch {
-        return false;
-      }
+    async function loadDatabaseData() {
+      if (!getSupabaseSession()?.access_token) return;
+      const [assets, stock, accessories, damage, withdrawals] = await Promise.all([
+        supabaseTable('assets', {query: 'select=*&order=id.asc'}),
+        supabaseTable('stock', {query: 'select=*&order=id.asc'}),
+        supabaseTable('accessories', {query: 'select=*&order=id.asc'}),
+        supabaseTable('damage', {query: 'select=*&order=id.asc'}),
+        supabaseTable('withdrawals', {query: 'select=*&order=id.asc'})
+      ]);
+      replaceRows(assetRows, (assets || []).map(mapAssetFromDb));
+      replaceRows(stockRows, (stock || []).map(mapStockFromDb));
+      replaceRows(damageRows, (damage || []).map(mapDamageFromDb));
+      replaceRows(withdrawalRows, (withdrawals || []).map(mapWithdrawalFromDb));
+      accessoryStock.mouse = Number((accessories || []).find(row => row.item_type === 'mouse')?.quantity || 0);
+      accessoryStock.keyboard = Number((accessories || []).find(row => row.item_type === 'keyboard')?.quantity || 0);
+      renderAssets(); renderStock(); renderAccessoryStock(); renderDamage();
+      updateOverview(); renderWithdrawalOptions(); renderWithdrawalHistory();
     }
 
     const views = {
       overview: ['ภาพรวมทรัพย์สิน', 'สถานะอุปกรณ์และสต็อกทั้งหมดในที่เดียว'],
       assets: ['อุปกรณ์ที่กำลังใช้งาน', 'รายการอุปกรณ์และผู้ใช้งาน'],
       stock: ['สต็อกอุปกรณ์ IT', 'คอมพิวเตอร์และอุปกรณ์อื่นๆ พร้อมจ่าย'],
-      withdrawal: ['เบิกอุปกรณ์', 'บันทึกคำขอและปรับยอดคงเหลือในเบราว์เซอร์นี้'],
+      withdrawal: ['เบิกอุปกรณ์', 'บันทึกคำขอและปรับยอดคงเหลือใน Supabase'],
       damage: ['รายการชำรุด', 'อุปกรณ์ที่ต้องตรวจสอบหรือส่งซ่อม']
     };
     const escapeHtml = value => String(value ?? '').replace(/[&<>"']/g, char => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));
@@ -969,117 +901,30 @@
       document.querySelector('#withdrawal-form [name="date"]').value = localDate;
     }
 
-    function submitWithdrawal(event) {
-      event.preventDefault();
-      const form = event.currentTarget;
-      const formData = new FormData(form);
-      const requester = String(formData.get('requester') || '').trim();
-      const department = String(formData.get('department') || '').trim();
-      const selection = String(formData.get('item') || '');
-      const quantity = Number(document.getElementById('withdrawal-quantity').value);
-      const [kind, value] = selection.split(':');
-      const error = document.getElementById('withdrawal-error');
-      error.textContent = '';
-
-      if (!requester || !department || !formData.get('date')) {
-        error.textContent = 'กรุณากรอกชื่อผู้เบิก แผนก และวันที่ให้ครบ';
-        return;
-      }
-      if (kind === 'computer') {
-        const stockIndex = Number(value);
-        const computer = stockRows[stockIndex];
-        if (!computer) {
-          error.textContent = 'อุปกรณ์นี้ถูกเบิกหรือเอาออกจากสต็อกแล้ว กรุณาเลือกรายการใหม่';
-          renderWithdrawalOptions();
-          return;
-        }
-        if (assetRows.some(row => row.serial.toLocaleUpperCase() === computer.serial.toLocaleUpperCase())) {
-          error.textContent = 'Serial No. นี้มีอยู่ในรายการกำลังใช้งานแล้ว';
-          return;
-        }
-        const [removedComputer] = stockRows.splice(stockIndex, 1);
-        const assignedComputer = {
-          user: requester,
-          department,
-          location: String(formData.get('location') || '').trim(),
-          name: computer.series,
-          type: computer.type,
-          serial: computer.serial,
-          brand: computer.brand,
-          adapter: computer.adapter || '',
-          mouse: '',
-          keyboard: '',
-          monitor: ''
-        };
-        assetRows.push(assignedComputer);
-        const withdrawal = {date: String(formData.get('date')), requester, department, location: String(formData.get('location') || '').trim(), item: `${computer.type} · ${computer.brand} ${computer.series}`, serial: computer.serial, quantity: 1, note: String(formData.get('note') || '').trim()};
-        withdrawalRows.push(withdrawal);
-        const saved = persistStockRows() && persistAssetRows() && persistWithdrawals();
-        if (!saved) {
-          withdrawalRows.pop();
-          assetRows.pop();
-          stockRows.splice(stockIndex, 0, removedComputer);
-          persistStockRows();
-          persistAssetRows();
-          persistWithdrawals();
-          error.textContent = 'บันทึกข้อมูลไม่ได้ กรุณาอนุญาตให้เบราว์เซอร์ใช้พื้นที่จัดเก็บ';
-          return;
-        }
-      } else if (kind === 'stock') {
-        const stockIndex = Number(value);
-        const item = stockRows[stockIndex];
-        const available = item ? stockQuantity(item) : 0;
-        if (!item || !Number.isInteger(quantity) || quantity < 1 || quantity > available) {
-          error.textContent = `จำนวนต้องอยู่ระหว่าง 1 ถึง ${available} ชิ้น`;
-          renderWithdrawalOptions();
-          return;
-        }
-        const previousQuantity = available;
-        const itemLabel = `${item.type} · ${item.brand} ${item.series}`;
-        item.quantity = available - quantity;
-        if (item.quantity === 0) stockRows.splice(stockIndex, 1);
-        withdrawalRows.push({date: String(formData.get('date')), requester, department, location: String(formData.get('location') || '').trim(), item: itemLabel, serial: item.serial || '', quantity, note: String(formData.get('note') || '').trim()});
-        if (!persistStockRows() || !persistWithdrawals()) {
-          withdrawalRows.pop();
-          if (item.quantity === 0) stockRows.splice(stockIndex, 0, item);
-          item.quantity = previousQuantity;
-          persistStockRows();
-          persistWithdrawals();
-          error.textContent = 'บันทึกข้อมูลไม่ได้ กรุณาอนุญาตให้เบราว์เซอร์ใช้พื้นที่จัดเก็บ';
-          return;
-        }
-      } else if (kind === 'accessory' && (value === 'mouse' || value === 'keyboard')) {
-        const available = accessoryStock[value];
-        if (!Number.isInteger(quantity) || quantity < 1 || quantity > available) {
-          error.textContent = `จำนวนต้องอยู่ระหว่าง 1 ถึง ${available} ชิ้น`;
-          return;
-        }
-        const itemLabel = value === 'mouse' ? 'เมาส์' : 'คีย์บอร์ด';
-        accessoryStock[value] -= quantity;
-        withdrawalRows.push({date: String(formData.get('date')), requester, department, location: String(formData.get('location') || '').trim(), item: itemLabel, serial: '', quantity, note: String(formData.get('note') || '').trim()});
-        if (!persistAccessoryStock() || !persistWithdrawals()) {
-          accessoryStock[value] += quantity;
-          withdrawalRows.pop();
-          persistAccessoryStock();
-          persistWithdrawals();
-          error.textContent = 'บันทึกข้อมูลไม่ได้ กรุณาอนุญาตให้เบราว์เซอร์ใช้พื้นที่จัดเก็บ';
-          return;
-        }
-      } else {
-        error.textContent = 'กรุณาเลือกรายการอุปกรณ์ที่มีในสต็อก';
-        return;
-      }
-
-      renderStock();
-      renderAssets();
-      updateOverview();
-      renderWithdrawalHistory();
-      renderWithdrawalOptions();
-      form.reset();
-      setLocalToday();
-      error.textContent = '';
-      queueExcelAutoSave();
-      window.alert('บันทึกการเบิกเรียบร้อยแล้ว');
+    async function submitWithdrawal(event) {
+      event.preventDefault(); if(!isAuthenticated){document.getElementById('withdrawal-error').textContent='กรุณาเข้าสู่ระบบก่อนบันทึกการเบิก';return;}
+      const form=event.currentTarget, fd=new FormData(form), requester=String(fd.get('requester')||'').trim(), department=String(fd.get('department')||'').trim(), selection=String(fd.get('item')||''), quantity=Number(document.getElementById('withdrawal-quantity').value), [kind,value]=selection.split(':'), error=document.getElementById('withdrawal-error'); error.textContent='';
+      if(!requester||!department||!fd.get('date')){error.textContent='กรุณากรอกชื่อผู้เบิก แผนก และวันที่ให้ครบ';return;}
+      const base={withdrawal_date:String(fd.get('date')),requester,department,location:String(fd.get('location')||'').trim(),note:String(fd.get('note')||'').trim()};
+      try{
+        if(kind==='computer'){
+          const computer=stockRows[Number(value)]; if(!computer)throw new Error('อุปกรณ์นี้ไม่มีอยู่ในสต็อกแล้ว');
+          const asset={user_name:requester,department,location:base.location,computer_name:computer.series,type:computer.type,serial:computer.serial,brand:computer.brand,adapter:computer.adapter||'',mouse:'',keyboard:'',monitor:'',updated_at:new Date().toISOString()};
+          await supabaseTable('assets',{method:'POST',body:asset,prefer:'return=minimal'});
+          await supabaseTable('stock',{method:'DELETE',query:`id=eq.${computer.id}`});
+          await supabaseTable('withdrawals',{method:'POST',body:{...base,item:`${computer.type} · ${computer.brand} ${computer.series}`,serial:computer.serial,quantity:1},prefer:'return=minimal'});
+        }else if(kind==='stock'){
+          const item=stockRows[Number(value)], available=item?stockQuantity(item):0; if(!item||!Number.isInteger(quantity)||quantity<1||quantity>available)throw new Error(`จำนวนต้องอยู่ระหว่าง 1 ถึง ${available} ชิ้น`);
+          if(quantity===available) await supabaseTable('stock',{method:'DELETE',query:`id=eq.${item.id}`});
+          else await supabaseTable('stock',{method:'PATCH',query:`id=eq.${item.id}`,body:{quantity:available-quantity,updated_at:new Date().toISOString()},prefer:'return=minimal'});
+          await supabaseTable('withdrawals',{method:'POST',body:{...base,item:`${item.type} · ${item.brand} ${item.series}`,serial:item.serial||'',quantity},prefer:'return=minimal'});
+        }else if(kind==='accessory'&&['mouse','keyboard'].includes(value)){
+          const available=accessoryStock[value]; if(!Number.isInteger(quantity)||quantity<1||quantity>available)throw new Error(`จำนวนต้องอยู่ระหว่าง 1 ถึง ${available} ชิ้น`);
+          await changeAccessoryQuantity(value,-quantity);
+          await supabaseTable('withdrawals',{method:'POST',body:{...base,item:value==='mouse'?'เมาส์':'คีย์บอร์ด',serial:'',quantity},prefer:'return=minimal'});
+        }else throw new Error('กรุณาเลือกรายการอุปกรณ์ที่มีในสต็อก');
+        await loadDatabaseData(); form.reset(); setLocalToday(); queueExcelAutoSave(); window.alert('บันทึกการเบิกเรียบร้อยแล้ว');
+      }catch(e){error.textContent=`บันทึก Supabase ไม่สำเร็จ: ${e.message}`;}
     }
 
     function updateLoginState() {
@@ -1112,46 +957,26 @@
       document.getElementById('asset-dialog').showModal();
     }
 
-    function saveAsset(event) {
+    async function saveAsset(event) {
       event.preventDefault();
+      if (!isAuthenticated) return;
       const form = event.currentTarget;
       const formData = new FormData(form);
       const record = Object.fromEntries(['user','department','location','name','type','serial','brand','adapter','mouse','keyboard','monitor'].map(key => [key, String(formData.get(key) || '').trim()]));
       const index = Number(formData.get('recordIndex'));
-      const serial = record.serial.toLocaleUpperCase();
-      const duplicate = assetRows.some((row, rowIndex) => rowIndex !== index && row.serial.toLocaleUpperCase() === serial);
       const error = document.getElementById('asset-error');
-      if (duplicate) {
-        error.textContent = 'Serial No. นี้มีอยู่ในทะเบียนแล้ว';
-        return;
-      }
-      const previous = index >= 0 ? assetRows[index] : null;
-      if (index >= 0) assetRows[index] = record;
-      else assetRows.push(record);
-      if (!persistAssetRows()) {
-        if (index >= 0) assetRows[index] = previous;
-        else assetRows.pop();
-        error.textContent = 'บันทึกในเบราว์เซอร์ไม่ได้ กรุณาอนุญาตให้เว็บไซต์ใช้พื้นที่จัดเก็บ';
-        return;
-      }
-      queueExcelAutoSave();
-      renderAssets();
-      updateOverview();
-      filterTable('assets');
-      document.getElementById('asset-dialog').close();
+      if (assetRows.some((row, rowIndex) => rowIndex !== index && row.serial.toLocaleUpperCase() === record.serial.toLocaleUpperCase())) { error.textContent = 'Serial No. นี้มีอยู่ในทะเบียนแล้ว'; return; }
+      const payload = {user_name:record.user, department:record.department, location:record.location, computer_name:record.name, type:record.type, serial:record.serial, brand:record.brand, adapter:record.adapter, mouse:record.mouse, keyboard:record.keyboard, monitor:record.monitor, updated_at:new Date().toISOString()};
+      try {
+        if (index >= 0) await supabaseTable('assets', {method:'PATCH', query:`id=eq.${assetRows[index].id}`, body:payload, prefer:'return=minimal'});
+        else await supabaseTable('assets', {method:'POST', body:payload, prefer:'return=minimal'});
+        await loadDatabaseData(); queueExcelAutoSave(); filterTable('assets'); document.getElementById('asset-dialog').close();
+      } catch (e) { error.textContent = `บันทึก Supabase ไม่สำเร็จ: ${e.message}`; }
     }
 
-    function removeAsset(index) {
-      const removed = assetRows.splice(index, 1)[0];
-      if (!persistAssetRows()) {
-        assetRows.splice(index, 0, removed);
-        window.alert('บันทึกการลบในเบราว์เซอร์ไม่ได้');
-        return;
-      }
-      queueExcelAutoSave();
-      renderAssets();
-      updateOverview();
-      filterTable('assets');
+    async function removeAsset(index) {
+      try { await supabaseTable('assets', {method:'DELETE', query:`id=eq.${assetRows[index].id}`}); await loadDatabaseData(); queueExcelAutoSave(); filterTable('assets'); }
+      catch (e) { window.alert(`ลบจาก Supabase ไม่สำเร็จ: ${e.message}`); }
     }
 
     function openStockEditor(index = -1) {
@@ -1191,78 +1016,39 @@
       document.getElementById('stock-dialog-title').textContent = isAccessory ? `${action}${itemName}เข้าสต็อก` : `${action}${itemName}ในสต็อก`;
     }
 
-    function saveStock(event) {
+    async function saveStock(event) {
       event.preventDefault();
       if (!isAuthenticated) return;
       const formData = new FormData(event.currentTarget);
       const type = String(formData.get('type') || '').trim();
-      const record = Object.fromEntries(['serial','brand','series','adapter','warranty'].map(key => [key, String(formData.get(key) || '').trim()]));
-      record.type = type;
-      record.quantity = isComputerType(type) ? 1 : Number(formData.get('quantity'));
       const index = Number(formData.get('recordIndex'));
       const accessoryKey = accessoryTypeKey(type);
       const error = document.getElementById('stock-error');
+      const quantity = isComputerType(type) ? 1 : Number(formData.get('quantity'));
       if (accessoryKey) {
-        if (index >= 0) {
-          error.textContent = 'เพิ่มเมาส์หรือคีย์บอร์ดผ่านรายการใหม่เท่านั้น';
-          return;
-        }
-        if (!Number.isInteger(record.quantity) || record.quantity < 1) {
-          error.textContent = 'จำนวนที่รับเข้าต้องเป็นจำนวนเต็มอย่างน้อย 1 ชิ้น';
-          return;
-        }
-        const previous = accessoryStock[accessoryKey];
-        accessoryStock[accessoryKey] += record.quantity;
-        if (!persistAccessoryStock()) {
-          accessoryStock[accessoryKey] = previous;
-          error.textContent = 'บันทึกไม่ได้ กรุณาอนุญาตให้เบราว์เซอร์ใช้พื้นที่จัดเก็บ';
-          return;
-        }
-        updateOverview();
-        renderAccessoryStock();
-        renderWithdrawalOptions();
-        queueExcelAutoSave();
-        document.getElementById('stock-dialog').close();
+        if (!Number.isInteger(quantity) || quantity < 1) { error.textContent = 'จำนวนที่รับเข้าต้องเป็นจำนวนเต็มอย่างน้อย 1 ชิ้น'; return; }
+        try { await changeAccessoryQuantity(accessoryKey, quantity); await loadDatabaseData(); queueExcelAutoSave(); document.getElementById('stock-dialog').close(); }
+        catch (e) { error.textContent = `บันทึก Supabase ไม่สำเร็จ: ${e.message}`; }
         return;
       }
-      const serial = record.serial.toLocaleUpperCase();
-      const duplicate = Boolean(serial) && stockRows.some((row, rowIndex) => rowIndex !== index && row.serial && row.serial.toLocaleUpperCase() === serial);
-      if (!Number.isInteger(record.quantity) || record.quantity < 1) {
-        error.textContent = 'จำนวนคงเหลือต้องเป็นจำนวนเต็มอย่างน้อย 1 ชิ้น';
-        return;
-      }
-        document.getElementById('stock-dialog-title').textContent = index >= 0 ? 'แก้ไขรายการในสต็อก' : 'เพิ่มรายการในสต็อก';
-      if (duplicate) {
-        error.textContent = 'Serial No. นี้มีอยู่ในสต็อกแล้ว';
-        return;
-      }
-      const previous = index >= 0 ? stockRows[index] : null;
-      if (index >= 0) stockRows[index] = record;
-      else stockRows.push(record);
-      if (!persistStockRows()) {
-        if (index >= 0) stockRows[index] = previous;
-        else stockRows.pop();
-        error.textContent = 'บันทึกในเบราว์เซอร์ไม่ได้ กรุณาอนุญาตให้เว็บไซต์ใช้พื้นที่จัดเก็บ';
-        return;
-      }
-      queueExcelAutoSave();
-      renderStock();
-      updateOverview();
-      filterTable('stock');
-      document.getElementById('stock-dialog').close();
+      const record = Object.fromEntries(['serial','brand','series','adapter','warranty'].map(key => [key, String(formData.get(key) || '').trim()]));
+      record.type = type; record.quantity = quantity;
+      if (!Number.isInteger(quantity) || quantity < 1) { error.textContent = 'จำนวนคงเหลือต้องเป็นจำนวนเต็มอย่างน้อย 1 ชิ้น'; return; }
+      if (record.serial && stockRows.some((row,rowIndex)=>rowIndex!==index && row.serial && row.serial.toLocaleUpperCase()===record.serial.toLocaleUpperCase())) { error.textContent='Serial No. นี้มีอยู่ในสต็อกแล้ว'; return; }
+      const payload = {type:record.type, serial:record.serial || null, brand:record.brand, series:record.series, warranty:record.warranty, updated_at:new Date().toISOString()};
+      // quantity/adapter จะถูกส่งเมื่อคอลัมน์มีอยู่ในตาราง stock
+      if (stockRows.length && Object.prototype.hasOwnProperty.call(stockRows[0], 'quantity')) payload.quantity = record.quantity;
+      if (stockRows.length && Object.prototype.hasOwnProperty.call(stockRows[0], 'adapter')) payload.adapter = record.adapter;
+      try {
+        if (index >= 0) await supabaseTable('stock',{method:'PATCH',query:`id=eq.${stockRows[index].id}`,body:payload,prefer:'return=minimal'});
+        else await supabaseTable('stock',{method:'POST',body:payload,prefer:'return=minimal'});
+        await loadDatabaseData(); queueExcelAutoSave(); filterTable('stock'); document.getElementById('stock-dialog').close();
+      } catch(e) { error.textContent=`บันทึก Supabase ไม่สำเร็จ: ${e.message}`; }
     }
 
-    function removeStock(index) {
-      const removed = stockRows.splice(index, 1)[0];
-      if (!persistStockRows()) {
-        stockRows.splice(index, 0, removed);
-        window.alert('บันทึกการลบในเบราว์เซอร์ไม่ได้');
-        return;
-      }
-      queueExcelAutoSave();
-      renderStock();
-      updateOverview();
-      filterTable('stock');
+    async function removeStock(index) {
+      try { await supabaseTable('stock',{method:'DELETE',query:`id=eq.${stockRows[index].id}`}); await loadDatabaseData(); queueExcelAutoSave(); filterTable('stock'); }
+      catch(e){ window.alert(`ลบจาก Supabase ไม่สำเร็จ: ${e.message}`); }
     }
 
     function openDamageEditor(index = -1) {
@@ -1278,44 +1064,34 @@
       document.getElementById('damage-dialog').showModal();
     }
 
-    function saveDamage(event) {
-      event.preventDefault();
-      if (!isAuthenticated) return;
-      const formData = new FormData(event.currentTarget);
-      const record = Object.fromEntries(['type','serial','brand','series','adapter','warranty','damage'].map(key => [key, String(formData.get(key) || '').trim()]));
-      const index = Number(formData.get('recordIndex'));
-      const serial = record.serial.toLocaleUpperCase();
-      const duplicate = damageRows.some((row, rowIndex) => rowIndex !== index && row.serial.toLocaleUpperCase() === serial);
-      const error = document.getElementById('damage-error');
-      if (duplicate) {
-        error.textContent = 'Serial No. นี้มีอยู่ในรายการชำรุดแล้ว';
-        return;
-      }
-      const previous = index >= 0 ? damageRows[index] : null;
-      if (index >= 0) damageRows[index] = record;
-      else damageRows.push(record);
-      if (!persistDamageRows()) {
-        if (index >= 0) damageRows[index] = previous;
-        else damageRows.pop();
-        error.textContent = 'บันทึกไม่ได้ กรุณาอนุญาตให้เบราว์เซอร์ใช้พื้นที่จัดเก็บ';
-        return;
-      }
-      queueExcelAutoSave();
-      renderDamage();
-      filterTable('damage');
-      document.getElementById('damage-dialog').close();
+    async function saveDamage(event) {
+      event.preventDefault(); if (!isAuthenticated) return;
+      const formData=new FormData(event.currentTarget);
+      const record=Object.fromEntries(['type','serial','brand','series','adapter','warranty','damage'].map(key=>[key,String(formData.get(key)||'').trim()]));
+      const index=Number(formData.get('recordIndex')); const error=document.getElementById('damage-error');
+      if(damageRows.some((row,rowIndex)=>rowIndex!==index && row.serial.toLocaleUpperCase()===record.serial.toLocaleUpperCase())){error.textContent='Serial No. นี้มีอยู่ในรายการชำรุดแล้ว';return;}
+      try{
+        if(index>=0) await supabaseTable('damage',{method:'PATCH',query:`id=eq.${damageRows[index].id}`,body:record,prefer:'return=minimal'});
+        else await supabaseTable('damage',{method:'POST',body:record,prefer:'return=minimal'});
+        await loadDatabaseData(); queueExcelAutoSave(); filterTable('damage'); document.getElementById('damage-dialog').close();
+      }catch(e){error.textContent=`บันทึก Supabase ไม่สำเร็จ: ${e.message}`;}
     }
 
-    function removeDamage(index) {
-      const removed = damageRows.splice(index, 1)[0];
-      if (!persistDamageRows()) {
-        damageRows.splice(index, 0, removed);
-        window.alert('บันทึกรายการชำรุดไม่ได้');
-        return;
+    async function removeDamage(index) {
+      try{await supabaseTable('damage',{method:'DELETE',query:`id=eq.${damageRows[index].id}`});await loadDatabaseData();queueExcelAutoSave();filterTable('damage');}
+      catch(e){window.alert(`ลบจาก Supabase ไม่สำเร็จ: ${e.message}`);}
+    }
+
+    async function changeAccessoryQuantity(item, delta) {
+      const rows = await supabaseTable('accessories',{query:`select=id,item_type,quantity&item_type=eq.${encodeURIComponent(item)}&limit=1`});
+      if (rows?.length) {
+        const next = Number(rows[0].quantity || 0) + delta;
+        if (next < 0) throw new Error('จำนวนคงเหลือไม่เพียงพอ');
+        await supabaseTable('accessories',{method:'PATCH',query:`id=eq.${rows[0].id}`,body:{quantity:next,updated_at:new Date().toISOString()},prefer:'return=minimal'});
+      } else {
+        if (delta < 0) throw new Error('ไม่พบยอดคงเหลือ');
+        await supabaseTable('accessories',{method:'POST',body:{item_type:item,quantity:delta,updated_at:new Date().toISOString()},prefer:'return=minimal'});
       }
-      queueExcelAutoSave();
-      renderDamage();
-      filterTable('damage');
     }
 
     function openAccessoryStockDialog(item = 'mouse', action = 'receive') {
@@ -1335,33 +1111,14 @@
       document.getElementById('accessory-stock-dialog').showModal();
     }
 
-    function receiveAccessoryStock(event) {
-      event.preventDefault();
-      if (!isAuthenticated) return;
-      const form = event.currentTarget;
-      const item = String(form.elements.namedItem('item').value);
-      const quantity = Number(form.elements.namedItem('quantity').value);
-      const error = document.getElementById('accessory-stock-error');
-      if (!['mouse','keyboard'].includes(item) || !Number.isInteger(quantity) || quantity < 1) {
-        error.textContent = 'กรุณาระบุอุปกรณ์และจำนวนเต็มอย่างน้อย 1 ชิ้น';
-        return;
-      }
-      const previous = accessoryStock[item];
-      if (accessoryStockAction === 'reduce' && quantity > previous) {
-        error.textContent = `ลดได้ไม่เกินจำนวนคงเหลือ ${previous} ชิ้น`;
-        return;
-      }
-      accessoryStock[item] += accessoryStockAction === 'reduce' ? -quantity : quantity;
-      if (!persistAccessoryStock()) {
-        accessoryStock[item] = previous;
-        error.textContent = 'บันทึกไม่ได้ กรุณาอนุญาตให้เบราว์เซอร์ใช้พื้นที่จัดเก็บ';
-        return;
-      }
-      updateOverview();
-      renderAccessoryStock();
-      renderWithdrawalOptions();
-      queueExcelAutoSave();
-      document.getElementById('accessory-stock-dialog').close();
+    async function receiveAccessoryStock(event) {
+      event.preventDefault(); if(!isAuthenticated)return;
+      const form=event.currentTarget; const item=String(form.elements.namedItem('item').value); const quantity=Number(form.elements.namedItem('quantity').value); const error=document.getElementById('accessory-stock-error');
+      if(!['mouse','keyboard'].includes(item)||!Number.isInteger(quantity)||quantity<1){error.textContent='กรุณาระบุอุปกรณ์และจำนวนเต็มอย่างน้อย 1 ชิ้น';return;}
+      const delta=accessoryStockAction==='reduce'?-quantity:quantity;
+      if(accessoryStock[item]+delta<0){error.textContent=`ลดได้ไม่เกินจำนวนคงเหลือ ${accessoryStock[item]} ชิ้น`;return;}
+      try{await changeAccessoryQuantity(item,delta);await loadDatabaseData();queueExcelAutoSave();document.getElementById('accessory-stock-dialog').close();}
+      catch(e){error.textContent=`บันทึก Supabase ไม่สำเร็จ: ${e.message}`;}
     }
 
     function filterTable(name) {
@@ -1420,6 +1177,7 @@
       try {
         await supabasePasswordLogin(email, password);
         isAuthenticated = true;
+        await loadDatabaseData();
         form.reset();
         document.getElementById('auth-dialog').close();
         updateLoginState();
