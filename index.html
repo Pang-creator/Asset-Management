@@ -146,6 +146,9 @@
     .type-badge.all-in-one { background: var(--amber-pale); color: #8b5b24; }
     .type-badge.other { background: var(--red-pale); color: var(--red); }
     .status-badge { background: var(--red-pale); color: var(--red); }
+    .status-badge.pending { background: var(--amber-pale); color: #8b5b24; }
+    .status-badge.approved { background: var(--green-pale); color: var(--green); }
+    .status-badge.rejected { background: var(--red-pale); color: var(--red); }
     .empty-state { display: none; padding: 28px 14px; color: var(--muted); text-align: center; font-size: 12px; }
     .inventory-footer { padding: 10px 14px; border-top: 1px solid var(--line); color: var(--muted); font-size: 10px; }
     @media (max-width: 1050px) {
@@ -157,7 +160,7 @@
       .app { display: block; padding-bottom: 65px; }
       .rail { position: fixed; z-index: 5; inset: auto 0 0; height: 61px; flex-direction: row; justify-content: center; gap: 0; padding: 5px 8px max(5px, env(safe-area-inset-bottom)); border-top: 1px solid #31544c; }
       .brand, .nav-label, .rail-bottom { display: none; }
-      .nav { width: 100%; max-width: 620px; grid-template-columns: repeat(5, 1fr); gap: 3px; }
+      .nav { width: 100%; max-width: 620px; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 3px; }
       .nav-button { min-height: 49px; flex-direction: column; justify-content: center; gap: 1px; padding: 3px 2px; font-size: 9px; text-align: center; }
       .nav-icon { font-size: 15px; }
       main { padding: 20px 14px 26px; }
@@ -214,6 +217,7 @@
           <button class="nav-button" data-view="assets"><span class="nav-icon" aria-hidden="true">▣</span><span>กำลังใช้งาน</span></button>
           <button class="nav-button" data-view="stock"><span class="nav-icon" aria-hidden="true">▤</span><span>สต็อก IT</span></button>
           <button class="nav-button" data-view="withdrawal"><span class="nav-icon" aria-hidden="true">↗</span><span>เบิกอุปกรณ์</span></button>
+          <button class="nav-button" data-view="approval" id="approval-nav-button" hidden><span class="nav-icon" aria-hidden="true">✓</span><span>อนุมัติการเบิก</span></button>
           <button class="nav-button" data-view="damage"><span class="nav-icon" aria-hidden="true">⌁</span><span>ชำรุด</span></button>
         </nav>
       </div>
@@ -334,6 +338,13 @@
             <div class="table-wrap"><table><thead><tr><th>วันที่</th><th>ผู้เบิก</th><th>อุปกรณ์</th><th>จำนวน</th><th>สถานะ</th></tr></thead><tbody id="withdrawal-history-body"></tbody></table><div class="empty-state" id="withdrawal-empty">ยังไม่มีรายการเบิก</div></div>
           </section>
         </div>
+      </section>
+
+      <section class="view" id="view-approval" aria-label="อนุมัติการเบิก">
+        <section class="panel">
+          <div class="panel-head"><div><h2 class="panel-title">คำขอเบิกที่รออนุมัติ</h2><p class="panel-note">สต็อกจะถูกตัดเมื่อผู้ดูแลอนุมัติเท่านั้น</p></div><strong class="result-count" id="approval-count">0 รายการ</strong></div>
+          <div class="table-wrap"><table><thead><tr><th>วันที่</th><th>ผู้เบิก</th><th>อุปกรณ์</th><th>จำนวน</th><th>หมายเหตุ</th><th>จัดการ</th></tr></thead><tbody id="approval-body"></tbody></table><div class="empty-state" id="approval-empty">ไม่มีคำขอที่รออนุมัติ</div></div>
+        </section>
       </section>
 
       <section class="view" id="view-damage" aria-label="อุปกรณ์ชำรุด">
@@ -548,7 +559,7 @@
     const mapAssetFromDb = row => ({id: row.id, user: row.user_name || '', department: row.department || '', location: row.location || '', name: row.computer_name || '', type: row.type || '', serial: row.serial || '', brand: row.brand || '', adapter: row.adapter || '', mouse: row.mouse || '', keyboard: row.keyboard || '', monitor: row.monitor || ''});
     const mapStockFromDb = row => ({id: row.id, type: row.type || '', serial: row.serial || '', brand: row.brand || '', series: row.series || '', quantity: Number.isInteger(Number(row.quantity)) ? Number(row.quantity) : 1, adapter: row.adapter || '', warranty: row.warranty || ''});
     const mapDamageFromDb = row => ({id: row.id, type: row.type || '', serial: row.serial || '', brand: row.brand || '', series: row.series || '', adapter: row.adapter || '', warranty: row.warranty || '', damage: row.damage || ''});
-    const mapWithdrawalFromDb = row => ({id: row.id, date: row.withdrawal_date || '', requester: row.requester || '', department: row.department || '', location: row.location || '', item: row.item || '', serial: row.serial || '', quantity: Number(row.quantity || 1), note: row.note || ''});
+    const mapWithdrawalFromDb = row => ({id: row.id, date: row.withdrawal_date || '', requester: row.requester || '', department: row.department || '', location: row.location || '', item: row.item || '', serial: row.serial || '', quantity: Number(row.quantity || 1), note: row.note || '', status: row.status || 'approved', itemKind: row.item_kind || '', stockId: row.stock_id || '', accessoryType: row.accessory_type || ''});
 
     async function loadDatabaseData() {
       if (!getSupabaseSession()?.access_token) return;
@@ -566,14 +577,15 @@
       accessoryStock.mouse = Number((accessories || []).find(row => row.item_type === 'mouse')?.quantity || 0);
       accessoryStock.keyboard = Number((accessories || []).find(row => row.item_type === 'keyboard')?.quantity || 0);
       renderAssets(); renderStock(); renderAccessoryStock(); renderDamage();
-      updateOverview(); renderWithdrawalOptions(); renderWithdrawalHistory();
+      updateOverview(); renderWithdrawalOptions(); renderWithdrawalHistory(); renderApprovalQueue();
     }
 
     const views = {
       overview: ['ภาพรวมทรัพย์สิน', 'สถานะอุปกรณ์และสต็อกทั้งหมดในที่เดียว'],
       assets: ['อุปกรณ์ที่กำลังใช้งาน', 'รายการอุปกรณ์และผู้ใช้งาน'],
       stock: ['สต็อกอุปกรณ์ IT', 'คอมพิวเตอร์และอุปกรณ์อื่นๆ พร้อมจ่าย'],
-      withdrawal: ['เบิกอุปกรณ์', 'บันทึกคำขอและปรับยอดคงเหลือใน Supabase'],
+      withdrawal: ['เบิกอุปกรณ์', 'ส่งคำขอเพื่อรอผู้ดูแลอนุมัติ'],
+      approval: ['อนุมัติการเบิก', 'ตรวจสอบคำขอและยืนยันการตัดสต็อก'],
       damage: ['รายการชำรุด', 'อุปกรณ์ที่ต้องตรวจสอบหรือส่งซ่อม']
     };
     const escapeHtml = value => String(value ?? '').replace(/[&<>"']/g, char => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));
@@ -961,29 +973,45 @@
         quantity.value = 1;
         quantity.max = 1;
         quantity.disabled = true;
-        hint.textContent = computer ? `${computer.type} Serial No. ${computer.serial} จะย้ายไปยังหน้ากำลังใช้งานเมื่อบันทึกการเบิก` : 'กรุณาเลือกรายการอุปกรณ์';
+        hint.textContent = computer ? `${computer.type} Serial No. ${computer.serial} จะย้ายไปยังหน้ากำลังใช้งานเมื่อผู้ดูแลอนุมัติ` : 'กรุณาเลือกรายการอุปกรณ์';
       } else if (kind === 'stock') {
         const item = stockRows[Number(value)];
         const available = item ? stockQuantity(item) : 0;
         quantity.disabled = false;
         quantity.max = String(available);
         if (Number(quantity.value) > available) quantity.value = available || 1;
-        hint.textContent = item ? `คงเหลือ ${available} ชิ้น · ระบบจะตัดยอดหลังบันทึกคำขอ` : 'กรุณาเลือกรายการอุปกรณ์';
+        hint.textContent = item ? `คงเหลือ ${available} ชิ้น · ระบบจะตัดยอดเมื่อผู้ดูแลอนุมัติ` : 'กรุณาเลือกรายการอุปกรณ์';
       } else {
         const available = value === 'mouse' ? accessoryStock.mouse : accessoryStock.keyboard;
         quantity.disabled = false;
         quantity.max = String(available);
         if (Number(quantity.value) > available) quantity.value = available || 1;
-        hint.textContent = `คงเหลือ ${available} ชิ้น · ระบบจะหักยอดหลังบันทึกคำขอ`;
+        hint.textContent = `คงเหลือ ${available} ชิ้น · ระบบจะหักยอดเมื่อผู้ดูแลอนุมัติ`;
       }
     }
 
     function renderWithdrawalHistory() {
       const body = document.getElementById('withdrawal-history-body');
       const rows = [...withdrawalRows].reverse();
-      body.innerHTML = rows.map(row => `<tr><td>${escapeHtml(row.date)}</td><td>${escapeHtml(row.requester)}<br><span class="panel-note">${escapeHtml(row.department)}</span></td><td>${escapeHtml(row.item)}${row.serial ? `<br><span class="panel-note">${escapeHtml(row.serial)}</span>` : ''}</td><td>${escapeHtml(row.quantity)}</td><td><span class="history-status">บันทึกแล้ว</span></td></tr>`).join('');
+      body.innerHTML = rows.map(row => `<tr><td>${escapeHtml(row.date)}</td><td>${escapeHtml(row.requester)}<br><span class="panel-note">${escapeHtml(row.department)}</span></td><td>${escapeHtml(row.item)}${row.serial ? `<br><span class="panel-note">${escapeHtml(row.serial)}</span>` : ''}</td><td>${escapeHtml(row.quantity)}</td><td>${withdrawalStatusBadge(row.status)}</td></tr>`).join('');
       document.getElementById('withdrawal-count').textContent = `${rows.length} รายการ`;
       document.getElementById('withdrawal-empty').style.display = rows.length ? 'none' : 'block';
+    }
+
+    function withdrawalStatusBadge(status) {
+      const labels = {pending: 'รออนุมัติ', approved: 'อนุมัติแล้ว', rejected: 'ไม่อนุมัติ'};
+      const state = ['pending', 'approved', 'rejected'].includes(status) ? status : 'approved';
+      return `<span class="status-badge ${state}">${labels[state]}</span>`;
+    }
+
+    function renderApprovalQueue() {
+      const pending = isAuthenticated ? withdrawalRows.filter(row => row.status === 'pending').slice().reverse() : [];
+      const body = document.getElementById('approval-body');
+      body.innerHTML = pending.map(row => `<tr><td>${escapeHtml(row.date)}</td><td>${escapeHtml(row.requester)}<br><span class="panel-note">${escapeHtml(row.department)}${row.location ? ` · ${escapeHtml(row.location)}` : ''}</span></td><td>${escapeHtml(row.item)}${row.serial ? `<br><span class="panel-note">${escapeHtml(row.serial)}</span>` : ''}</td><td>${escapeHtml(row.quantity)}</td><td>${escapeHtml(row.note || '—')}</td><td>${isAuthenticated ? `<div class="edit-actions"><button class="primary-button approve-withdrawal" type="button" data-withdrawal-id="${escapeHtml(row.id)}">อนุมัติ</button><button class="quiet-button reject-withdrawal" type="button" data-withdrawal-id="${escapeHtml(row.id)}">ไม่อนุมัติ</button></div>` : 'เข้าสู่ระบบผู้ดูแล'}</td></tr>`).join('');
+      document.getElementById('approval-count').textContent = `${pending.length} รายการ`;
+      const empty = document.getElementById('approval-empty');
+      empty.textContent = isAuthenticated ? 'ไม่มีคำขอที่รออนุมัติ' : 'เข้าสู่ระบบผู้ดูแลเพื่อดูและจัดการคำขอ';
+      empty.style.display = pending.length ? 'none' : 'block';
     }
 
     function setLocalToday() {
@@ -993,29 +1021,100 @@
     }
 
     async function submitWithdrawal(event) {
-      event.preventDefault(); if(!isAuthenticated){document.getElementById('withdrawal-error').textContent='กรุณาเข้าสู่ระบบก่อนบันทึกการเบิก';return;}
-      const form=event.currentTarget, fd=new FormData(form), requester=String(fd.get('requester')||'').trim(), department=String(fd.get('department')||'').trim(), selection=String(fd.get('item')||''), quantity=Number(document.getElementById('withdrawal-quantity').value), [kind,value]=selection.split(':'), error=document.getElementById('withdrawal-error'); error.textContent='';
-      if(!requester||!department||!fd.get('date')){error.textContent='กรุณากรอกชื่อผู้เบิก แผนก และวันที่ให้ครบ';return;}
-      const base={withdrawal_date:String(fd.get('date')),requester,department,location:String(fd.get('location')||'').trim(),note:String(fd.get('note')||'').trim()};
-      try{
-        if(kind==='computer'){
-          const computer=stockRows[Number(value)]; if(!computer)throw new Error('อุปกรณ์นี้ไม่มีอยู่ในสต็อกแล้ว');
-          const asset={user_name:requester,department,location:base.location,computer_name:computer.series,type:computer.type,serial:computer.serial,brand:computer.brand,adapter:computer.adapter||'',mouse:'',keyboard:'',monitor:'',updated_at:new Date().toISOString()};
-          await supabaseTable('assets',{method:'POST',body:asset,prefer:'return=minimal'});
-          await supabaseTable('stock',{method:'DELETE',query:`id=eq.${computer.id}`});
-          await supabaseTable('withdrawals',{method:'POST',body:{...base,item:`${computer.type} · ${computer.brand} ${computer.series}`,serial:computer.serial,quantity:1},prefer:'return=minimal'});
-        }else if(kind==='stock'){
-          const item=stockRows[Number(value)], available=item?stockQuantity(item):0; if(!item||!Number.isInteger(quantity)||quantity<1||quantity>available)throw new Error(`จำนวนต้องอยู่ระหว่าง 1 ถึง ${available} ชิ้น`);
-          if(quantity===available) await supabaseTable('stock',{method:'DELETE',query:`id=eq.${item.id}`});
-          else await supabaseTable('stock',{method:'PATCH',query:`id=eq.${item.id}`,body:{quantity:available-quantity,updated_at:new Date().toISOString()},prefer:'return=minimal'});
-          await supabaseTable('withdrawals',{method:'POST',body:{...base,item:`${item.type} · ${item.brand} ${item.series}`,serial:item.serial||'',quantity},prefer:'return=minimal'});
-        }else if(kind==='accessory'&&['mouse','keyboard'].includes(value)){
-          const available=accessoryStock[value]; if(!Number.isInteger(quantity)||quantity<1||quantity>available)throw new Error(`จำนวนต้องอยู่ระหว่าง 1 ถึง ${available} ชิ้น`);
-          await changeAccessoryQuantity(value,-quantity);
-          await supabaseTable('withdrawals',{method:'POST',body:{...base,item:value==='mouse'?'เมาส์':'คีย์บอร์ด',serial:'',quantity},prefer:'return=minimal'});
-        }else throw new Error('กรุณาเลือกรายการอุปกรณ์ที่มีในสต็อก');
-        await loadDatabaseData(); form.reset(); setLocalToday(); queueExcelAutoSave(); window.alert('บันทึกการเบิกเรียบร้อยแล้ว');
-      }catch(e){error.textContent=`บันทึก Supabase ไม่สำเร็จ: ${e.message}`;}
+      event.preventDefault();
+      const form = event.currentTarget;
+      const formData = new FormData(form);
+      const requester = String(formData.get('requester') || '').trim();
+      const department = String(formData.get('department') || '').trim();
+      const selection = String(formData.get('item') || '');
+      const quantity = Number(document.getElementById('withdrawal-quantity').value);
+      const [kind, value] = selection.split(':');
+      const error = document.getElementById('withdrawal-error');
+      error.textContent = '';
+      if (!isAuthenticated) { error.textContent = 'กรุณาเข้าสู่ระบบก่อนบันทึกการเบิก'; return; }
+      if (!requester || !department || !formData.get('date')) { error.textContent = 'กรุณากรอกชื่อผู้เบิก แผนก และวันที่ให้ครบ'; return; }
+
+      const request = {
+        withdrawal_date: String(formData.get('date')),
+        requester,
+        department,
+        location: String(formData.get('location') || '').trim(),
+        note: String(formData.get('note') || '').trim(),
+        quantity,
+        status: 'pending'
+      };
+
+      try {
+        if (kind === 'computer') {
+          const computer = stockRows[Number(value)];
+          if (!computer) throw new Error('อุปกรณ์นี้ไม่มีอยู่ในสต็อกแล้ว');
+          Object.assign(request, {
+            item: `${computer.type} · ${computer.brand} ${computer.series}`,
+            serial: computer.serial,
+            quantity: 1,
+            item_kind: 'computer',
+            stock_id: String(computer.id),
+            accessory_type: null
+          });
+        } else if (kind === 'stock') {
+          const item = stockRows[Number(value)];
+          const available = item ? stockQuantity(item) : 0;
+          if (!item || !Number.isInteger(quantity) || quantity < 1 || quantity > available) throw new Error(`จำนวนต้องอยู่ระหว่าง 1 ถึง ${available} ชิ้น`);
+          Object.assign(request, {
+            item: `${item.type} · ${item.brand} ${item.series}`,
+            serial: item.serial || '',
+            item_kind: 'stock',
+            stock_id: String(item.id),
+            accessory_type: null
+          });
+        } else if (kind === 'accessory' && ['mouse', 'keyboard'].includes(value)) {
+          const available = accessoryStock[value];
+          if (!Number.isInteger(quantity) || quantity < 1 || quantity > available) throw new Error(`จำนวนต้องอยู่ระหว่าง 1 ถึง ${available} ชิ้น`);
+          Object.assign(request, {
+            item: value === 'mouse' ? 'เมาส์' : 'คีย์บอร์ด',
+            serial: '',
+            item_kind: 'accessory',
+            stock_id: null,
+            accessory_type: value
+          });
+        } else {
+          throw new Error('กรุณาเลือกรายการอุปกรณ์ที่มีในสต็อก');
+        }
+
+        await supabaseTable('withdrawals', {method: 'POST', body: request, prefer: 'return=minimal'});
+        await loadDatabaseData();
+        form.reset();
+        setLocalToday();
+        queueExcelAutoSave();
+        window.alert('ส่งคำขอเบิกแล้ว · รอผู้ดูแลอนุมัติก่อนตัดสต็อก');
+      } catch (requestError) {
+        error.textContent = `ส่งคำขอไป Supabase ไม่สำเร็จ: ${requestError.message}`;
+      }
+    }
+
+    async function approveWithdrawal(withdrawalId) {
+      if (!isAuthenticated) return;
+      const request = withdrawalRows.find(row => String(row.id) === String(withdrawalId));
+      if (!request || request.status !== 'pending') return;
+      try {
+        await supabaseTable('rpc/approve_withdrawal', {method: 'POST', body: {p_withdrawal_id: String(withdrawalId)}});
+        await loadDatabaseData();
+        queueExcelAutoSave();
+      } catch (error) {
+        window.alert(`อนุมัติคำขอไม่สำเร็จ: ${error.message}`);
+      }
+    }
+
+    async function rejectWithdrawal(withdrawalId) {
+      if (!isAuthenticated) return;
+      const request = withdrawalRows.find(row => String(row.id) === String(withdrawalId));
+      if (!request || request.status !== 'pending') return;
+      try {
+        await supabaseTable('rpc/reject_withdrawal', {method: 'POST', body: {p_withdrawal_id: String(withdrawalId)}});
+        await loadDatabaseData();
+      } catch (error) {
+        window.alert(`ไม่สามารถปฏิเสธคำขอได้: ${error.message}`);
+      }
     }
 
     function updateLoginState() {
@@ -1025,10 +1124,15 @@
       document.getElementById('add-asset-button').hidden = !isAuthenticated;
       document.getElementById('add-stock-button').hidden = !isAuthenticated;
       document.getElementById('add-damage-button').hidden = !isAuthenticated;
+      document.getElementById('approval-nav-button').hidden = !isAuthenticated;
+      if (!isAuthenticated && document.getElementById('view-approval').classList.contains('active')) {
+        document.querySelector('.nav-button[data-view="overview"]').click();
+      }
       renderAssets();
       renderStock();
       renderAccessoryStock();
       renderDamage();
+      renderApprovalQueue();
       if (document.getElementById('view-assets').classList.contains('active')) filterTable('assets');
       if (document.getElementById('view-stock').classList.contains('active')) filterTable('stock');
       if (document.getElementById('view-damage').classList.contains('active')) filterTable('damage');
@@ -1240,6 +1344,7 @@
         renderWithdrawalOptions();
         renderWithdrawalHistory();
       }
+      if (view === 'approval') renderApprovalQueue();
       window.scrollTo({top: 0, behavior: 'smooth'});
     }));
 
@@ -1337,6 +1442,12 @@
     document.getElementById('accessory-stock-form').addEventListener('submit', receiveAccessoryStock);
     document.getElementById('withdrawal-item').addEventListener('change', updateWithdrawalAvailability);
     document.getElementById('withdrawal-form').addEventListener('submit', submitWithdrawal);
+    document.getElementById('approval-body').addEventListener('click', event => {
+      const button = event.target.closest('[data-withdrawal-id]');
+      if (!button || !isAuthenticated) return;
+      if (button.classList.contains('approve-withdrawal')) approveWithdrawal(button.dataset.withdrawalId);
+      if (button.classList.contains('reject-withdrawal')) rejectWithdrawal(button.dataset.withdrawalId);
+    });
     document.querySelectorAll('[data-close-dialog]').forEach(button => button.addEventListener('click', () => {
       document.getElementById(button.dataset.closeDialog).close();
     }));
